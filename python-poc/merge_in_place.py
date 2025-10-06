@@ -140,7 +140,7 @@ def count_sort_partial_inplace(arr, kmax, key=lambda x: x):
             arr[i] = val
 
 
-def merge_sorted_array_inplace(arr: list, ell: int):
+def _merge_sorted_array_inplace(arr: list, ell: int):
     n = len(arr)
     write = 0
     i = 0
@@ -150,15 +150,47 @@ def merge_sorted_array_inplace(arr: list, ell: int):
         start = i
         while i < n and (arr[i] & mask) == key:
             i += 1
-        group_end = i
-        for i1 in range(start, group_end):
-            for i2 in range(i1 + 1, group_end):
-                if write >= n:
-                    arr.append((arr[i1] ^ arr[i2]) >> ell) 
-                else:
-                    arr[write] = (arr[i1] ^ arr[i2]) >> ell
-                write += 1
+        end = i
+        group = []
+        for i1 in range(start, end):
+            for i2 in range(i1 + 1, end):
+                group.append((arr[i1] ^ arr[i2]) >> ell)
+        arr[write:write + len(group)] = group
+        write += len(group)
+        assert write <= i, f"Write new items into slots that have not been read, {write = }, {start = }, {end = }, {len(group) = }."
+        del group
     del arr[write:]
+    return arr
+
+def merge_sorted_array_inplace(arr: list, ell: int):
+    n = len(arr)
+    write = 0
+    i = 0
+    mask = (1 << ell) - 1
+    group = []
+    while i < n:
+        key = arr[i] & mask
+        start = i
+        while i < n and (arr[i] & mask) == key:
+            i += 1
+        end = i
+        for i1 in range(start, end):
+            for i2 in range(i1 + 1, end):
+                group.append((arr[i1] ^ arr[i2]) >> ell)
+        if len(group) + write <= i:
+            arr[write:write + len(group)] = group
+            write += len(group)
+            group = []
+        else:
+            # not enough space to write in place
+            arr[write:end] = group[:end - write]
+            group = group[end - write:]
+            write = end
+    if len(group) > 0:
+        assert write == n
+        arr.extend(group)
+    else:
+        del arr[write:]
     return arr
 
 def merge_qsort_inplace(arr: list, ell: int):
@@ -187,7 +219,7 @@ def merge_timsort_NOT_inplace(arr: list, ell: int):
     return merge_sorted_array_inplace(arr, ell)
 
 if __name__ == "__main__":
-    random.seed(0xdeadbeef)
+    random.seed(0x123456)
     # Equihash(128,7), Equihash(200,9)
     n, k = 200, 9
     # n, k = 128, 7
@@ -196,10 +228,9 @@ if __name__ == "__main__":
     print("Original Data length:", len(data))
     current_mem = get_mem_mb()
     print(f"Current memory: {current_mem:.3f} MB")
-    # monitor_memory(merge_qsort_inplace, data, ell)
+    data = monitor_memory(merge_qsort_inplace, data, ell)
     # monitor_memory(merge_hsort_inplace, data, ell)
-    monitor_memory(merge_csort_NOT_inplace, data, ell)
+    # monitor_memory(merge_csort_NOT_inplace, data, ell)
     # monitor_memory(merge_timsort_NOT_inplace, data, ell)
-    # monitor_extra_memory(merge_timsort_NOT_inplace, data, ell)
     print("Merged data length:", len(data))
     print("Merged data (first 10 elements):", [hex(x) for x in data[:10]])
