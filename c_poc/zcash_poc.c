@@ -4,9 +4,11 @@
  * Proof-of-Concept (PoC) implementation for the experimental study of
  * Wagner’s algorithm and its optimized memory–time tradeoffs.
  *
- * This code is designed for **algorithmic correctness and fairness** —
- * not for peak performance. The purpose is to compare tradeoffs
- * under uniform and reproducible experimental conditions.
+ * This code illustrates the core ideas and implementation principles
+ * behind our exploration of Wagner’s algorithm and its optimized
+ * memory–time tradeoffs. It focuses on algorithmic clarity and correctness,
+ * rather than on peak performance, serving as a reproducible
+ * proof-of-concept for experimental and structural analysis.
  *
  * Build:
      gcc -std=c11 -Ofast -flto -march=native -funroll-loops -DNDEBUG \
