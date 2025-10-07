@@ -206,7 +206,7 @@ def merge_hsort_inplace(arr: list, ell: int):
     return merge_sorted_array_inplace(arr, ell)
 
 def merge_csort_NOT_inplace(arr: list, ell: int):
-    """In-place count using count sort implementation for ell-bit suffix."""
+    """Merge using count sort implementation for ell-bit suffix."""
     mask = (1 << ell) - 1
     count_sort_partial_inplace(arr, 2**ell, key=lambda x: x & mask)
     return merge_sorted_array_inplace(arr, ell)
