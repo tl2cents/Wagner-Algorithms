@@ -1,9 +1,6 @@
 /*------------------------------------------------------------------------------
 * zcash_poc.c
  *
- * Proof-of-Concept (PoC) implementation for the experimental study of
- * Wagner’s algorithm and its optimized memory–time tradeoffs.
- *
  * This code illustrates the core ideas and implementation principles
  * behind our exploration of Wagner’s algorithm and its optimized
  * memory–time tradeoffs. It focuses on algorithmic clarity and correctness,
