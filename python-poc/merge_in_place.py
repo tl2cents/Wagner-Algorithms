@@ -1,9 +1,22 @@
 """ 
-Proof of concept implementations of in-place merge (colliding ell bits). This includes:
+Proof of concept implementations of in-place merge (colliding ell bits). The underlying sorting algorithms include:
     - in_place_quick_sort: O(n log n) time complexity.
     - in_place_heap_sort: O(n log n) time complexity.
-    - in_place_counting_sort (or bucket sort?): O(n) time complexity with O(k) space complexity where k is the range of input values.
-The paper "Optimal In-Place Suffix Sorting" by Zhize Li, Jian Li, and Hongwei Huo provides a linear time in-place sorting algorithm for suffix arrays which perfectly fits our needs. See: https://link.springer.com/chapter/10.1007/978-3-030-00479-8_22 for details.
+    - in_place_counting_sort (or bucket/radix sort): O(n) time complexity with O(n + k) space complexity where k is the range of input values.
+    - inplace_radix_sort: almost O(n) time complexity with O(1) space complexity.
+
+## More references and advanced implementations.
+    Technique Blog:
+    - https://duvanenko.tech.blog/2022/04/09/in-place-binary-radix-sort/
+    - https://duvanenko.tech.blog/2022/04/10/in-place-n-bit-radix-sort/
+    - https://github.com/DragonSpit/ParallelAlgorithms
+    - https://github.com/voutcn/kxsort
+    - Wiki: https://en.wikipedia.org/wiki/Radix_sort#In-place_MSD_radix_sort_implementations
+  
+    Paper:
+    - Fast In-place Integer Radix Sorting: https://link.springer.com/chapter/10.1007/11428862_107
+    - Theoretically-Efficient and Practical Parallel In-Place Radix Sorting: https://jshun.csail.mit.edu/RegionsSort.pdf
+    - PARADIS: an efficient parallel algorithm for in-place radix sort: https://dl.acm.org/doi/10.14778/2824032.2824050
 """
 import random
 import tracemalloc
