@@ -208,13 +208,12 @@ def concrete_cip_trade_offs():
         (288, 8),
         (200, 9),
     ]
-    headers = ["(n,k)", "peak_mem", "plain_peak_mem","runtime", "switching_height"]
+    headers = ["(n,k)", "plain_peak_mem", "peak_mem", "runtime", "switching_height"]
     results = []
     for n, k in Equihash_Parameter_Set:
         waf = Wagner_Algorithmic_Framework(n, k)
         results.append(waf.search_best_ip_with_post_retrieval(True))
     # multi row table
-    headers 
     table = Table(title="Concrete Index Pointer Trade-off for GBP(n,2^k)", 
                   padding=(0, 0), 
                   header_style="bold red",
@@ -228,16 +227,16 @@ def concrete_cip_trade_offs():
         cip_mem, T0 = waf.single_list_ip_estimator()
         row = []
         row.append(f"{result['(n,k)']}")
-        row.append(f"2^{to_log2_complexity(result['peak_mem']):.2f}")
         row.append(f"2^{to_log2_complexity(cip_mem):.2f}")
+        row.append(f"2^{to_log2_complexity(result['peak_mem']):.2f}")
         row.append(f"{result['runtime']/T0:.2f} * T0")
         row.append(f"{result['switching_height']}")
         table.add_row(*row)
-        print(f"({n}, $2^{{{k}}}$) $2^{{{to_log2_complexity(result['peak_mem']):.2f}}}$ & $2^{{{to_log2_complexity(cip_mem):.2f}}}$ & ${result['runtime']/T0:.2f} \cdot T_0$ & {result['switching_height']}\\\\")
+        print(f"({n}, $2^{{{k}}}$) & $2^{{{to_log2_complexity(cip_mem):.2f}}}$ & $2^{{{to_log2_complexity(result['peak_mem']):.2f}}}$ & ${result['runtime']/T0:.2f} \cdot T_0$ & {result['switching_height']}\\\\")
     console = Console()
     console.print(table)
     
-def hybrid_single_chain_all_paras():
+def concrete_hybrid_trade_offs(h1_max = 2, h2_min = None, max_gamma = 4.0):
     # the commented parameters do not satisfy k<= sqrt{n/2 + 1} and the single-list algorithm succeeds with small prob.
     Equihash_Parameter_Set = [
         (96, 5),       # h1 = 1, h2 = 3, peak: 23.04, peak_layer = 4, extra runtime 2.80 * T0
@@ -254,13 +253,39 @@ def hybrid_single_chain_all_paras():
         (288, 8),      # h1 = 1, h2 = 4, peak: 41.03, peak_layer = 7, extra runtime 2.50 * T0
         (200, 9),      # h1 = 1, h2 = 5, peak: 28.38, peak_layer = 8, extra runtime 3.00 * T0
     ]
+    results = []
+    headers = ["(n,k)","plain_peak_mem", "peak_mem", "runtime", "switching_height1", "switching_height2", "peak_layer"]
     for n, k in Equihash_Parameter_Set:
         waf = Wagner_Algorithmic_Framework(n, k)
-        waf.search_best_hybrid_single_chian(verbose=True)
+        results.append(waf.search_best_hybrid_single_chian(h1_max, h2_min, max_gamma, verbose=True))
+    # multi row table
+    table = Table(title="Concrete Hybrid Single-Chain Trade-off for GBP(n,2^k)", 
+                  padding=(0, 0), 
+                  header_style="bold red",
+                  title_style="bold white underline on blue"
+                  )
+    for header in headers:
+        table.add_column(header, justify="center")
     
+    for (n, k), result in zip(Equihash_Parameter_Set, results):
+        waf = Wagner_Algorithmic_Framework(n, k)
+        cip_mem, T0 = waf.single_list_ip_estimator()
+        row = []
+        row.append(f"{result['(n,k)']}")
+        row.append(f"2^{to_log2_complexity(cip_mem):.2f}")
+        row.append(f"2^{to_log2_complexity(result['peak_mem']):.2f}")
+        row.append(f"{result['runtime']/T0:.2f} * T0")
+        row.append(f"{result['switching_height1']}")
+        row.append(f"{result['switching_height2']}")
+        row.append(f"{result['peak_layer']}")
+        table.add_row(*row)
+        print(f"({n}, {k}) & $2^{{{to_log2_complexity(cip_mem):.2f}}}$ & $2^{{{to_log2_complexity(result['peak_mem']):.2f}}}$ & ${result['runtime']/T0:.2f} \cdot T_0$ & {result['switching_height1']} & {result['switching_height2']} & {result['peak_layer']}\\\\")
+        
+    console = Console()
+    console.print(table)
         
 if __name__ == "__main__":
     # concrete_civ_trade_offs()
     # concrete_cip_trade_offs()
-    hybrid_single_chain_all_paras()
-    # revisiting_equihash_parameters()
+    # hybrid_single_chain_all_paras()
+    concrete_hybrid_trade_offs()
