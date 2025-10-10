@@ -153,12 +153,21 @@ def count_sort_partial_inplace(arr, kmax, key=lambda x: x):
             arr[i] = val
 
 
-def radix_sort_inplace(arr, key = lambda x: x):
+def radix_sort_inplace(arr, n_lsb):
+    """ Radix sort for n_lsb bits. Use buckets of size 2^8
+    """
+    if n_lsb % 8 == 0:
+        initial_shift = n_lsb - 8
+    else:
+        initial_shift = n_lsb  - n_lsb % 8
+    key_mask = (1 << n_lsb) - 1
+    key = lambda x: x & key_mask
     radix_bits = 8
     radix_size = 1 << radix_bits
     radix_mask = radix_size - 1
-
+    
     def sort_recursive(start, end, bit_shift):
+        
         if start >= end - 1 or bit_shift < 0:
             return
         counts = [0] * radix_size
@@ -189,7 +198,7 @@ def radix_sort_inplace(arr, key = lambda x: x):
         next_bit_shift = bit_shift - radix_bits
         for b in range(radix_size):
             sort_recursive(bucket_starts[b], bucket_starts[b] + counts[b], next_bit_shift)
-    initial_shift = 16 
+
     sort_recursive(0, len(arr), initial_shift)
 
 def merge_sorted_array_inplace(arr: list, ell: int):
@@ -247,8 +256,7 @@ def merge_csort_NOT_inplace(arr: list, ell: int):
 
 def merge_rsort_inplace(arr: list, ell: int):
     """Merge using radix sort implementation for ell-bit suffix."""
-    mask = (1 << ell) - 1
-    radix_sort_inplace(arr, key=lambda x: x & mask)
+    radix_sort_inplace(arr, ell)
     return merge_sorted_array_inplace(arr, ell)
 
 def merge_timsort_NOT_inplace(arr: list, ell: int):
@@ -273,6 +281,5 @@ if __name__ == "__main__":
     # monitor_memory(merge_csort_NOT_inplace, data, ell)
     # monitor_memory(merge_timsort_NOT_inplace, data, ell)
     monitor_memory(merge_rsort_inplace, data, ell)
-    
     print("Merged data length:", len(data))
     print("Merged data (first 10 elements):", [hex(x) for x in data[:10]])
