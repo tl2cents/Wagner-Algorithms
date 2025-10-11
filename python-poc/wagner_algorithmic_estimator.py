@@ -87,6 +87,10 @@ class Wagner_Algorithmic_Framework:
             M += ((2**i) * idx_len + self.n - i * self.ell) * N_h(i)
             T += 2**(self.k - 1 - i) * 2 * N_h(i)
         return M, T
+    
+    def kiv_list_sizes_with_constraints(self, t: int):
+        def N_h(h): return max(2 ** (self.ell - t * 2**h), 1)  # list size at height h, size >= 1 if solution exists
+        return [N_h(h) for h in range(self.k)]
 
     def _search_best_k_tree_iv_index_trimming(self, verbose: bool = False):
         """
@@ -197,7 +201,8 @@ class Wagner_Algorithmic_Framework:
                 current_size = current_size
             else:
                 assert max_candidates[i + 1] < max_permutations[i + 1]
-                current_size = max((max_candidates[i + 1] / max_permutations[i + 1]) * (current_size * (current_size - 1)/ 2) / 2**self.ell, 1)
+                # in the second run, the minimum size of layer i is at least: 2^(k - i)
+                current_size = max((max_candidates[i + 1] / max_permutations[i + 1]) * (current_size * (current_size - 1)/ 2) / 2**self.ell, 2**(self.k - i - 1))
         return threshold_h, layer_sizes
     
     def civ_concrete_parameters(self, trimmed_length: int, switching_height1: int, switching_height2: int, verbose: bool = False):

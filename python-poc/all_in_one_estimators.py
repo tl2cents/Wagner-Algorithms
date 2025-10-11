@@ -51,7 +51,7 @@ def revisiting_equihash_parameters():
         (288, 8),
         (200, 9),
     ]
-    headers = ["(n,k)", "CIV", "CIV-IT", "CIP", "CIP-PR", "TIV", "TIV-IT", "TIP"]
+    headers = ["(n,k)", "CIV", "CIV-IT", "CIP", "CIP-PR", "Hybrid","TIV", "TIV-IT", "TIP"]
     pt = PrettyTable(headers)
     pt.title = "Improved Memory Complexity for GBP(n,2^k)"
     print("The paper uses the limited xor-removal case")
@@ -60,11 +60,14 @@ def revisiting_equihash_parameters():
         civ_mem, civ_time = to_log2_complexity(waf.single_list_iv_estimator())
         civ_star_mem, civ_star_time = to_log2_complexity(waf.single_list_iv_it_estimator())
         cip_mem, cip_time = to_log2_complexity(waf.single_list_ip_estimator(trade_type="plain"))
-        cip_star_mem, cip_star_time = to_log2_complexity(waf.single_list_ip_estimator(trade_type="post_retrieval"))
+        cip_pr_mem, cip_pr_time = to_log2_complexity(waf.single_list_ip_estimator(trade_type="post_retrieval"))
+        hybrid_result = waf.search_best_hybrid_single_chian()
+        hybrid_mem = to_log2_complexity(hybrid_result["peak_mem"])
+        hybrid_time = hybrid_result["runtime"]
         tiv_mem, tiv_time = to_log2_complexity(waf.k_tree_iv_estimator())
         tiv_star_mem, tiv_star_time = to_log2_complexity(waf.k_tree_iv_it_estimator())
         tip_mem, tip_time = to_log2_complexity(waf.k_tree_ip_estimator())
-        pt.add_row([str((n,k)), f"2^%.1f"%civ_mem, f"2^%.1f"%civ_star_mem, f"2^%.1f"%cip_mem, f"2^%.1f"%cip_star_mem,
+        pt.add_row([str((n,k)), f"2^%.1f"%civ_mem, f"2^%.1f"%civ_star_mem, f"2^%.1f"%cip_mem, f"2^%.1f"%cip_pr_mem, f"2^%.1f"%hybrid_mem, 
                     f"2^%.1f"%tiv_mem, f"2^%.1f"%tiv_star_mem, f"2^%.1f"%tip_mem])
     print(pt)
     # multi row table
@@ -109,26 +112,28 @@ def revisiting_equihash_parameters():
         cip_star_mem, cip_star_time = waf.single_list_ip_estimator(trade_type="post_retrieval")
         cip_star_mem = to_log2_complexity(cip_star_mem)
         sub_tables[3].add_row(f"2^%.2f"%cip_star_mem, f"%.2f * T0" % (cip_star_time/T0))
+        hybrid_result = waf.search_best_hybrid_single_chian()
+        hybrid_mem = to_log2_complexity(hybrid_result["peak_mem"])
+        hybrid_time = hybrid_result["runtime"]
+        sub_tables[4].add_row(f"2^%.2f"%hybrid_mem, f"%.2f * T0" % (hybrid_time/T0))
         tiv_mem, T1 = waf.k_tree_iv_estimator()
         tiv_mem = to_log2_complexity(tiv_mem)
-        sub_tables[4].add_row(f"2^%.2f"%tiv_mem, f"T1(2^%.2f)"%to_log2_complexity(T1))
+        sub_tables[5].add_row(f"2^%.2f"%tiv_mem, f"T1(2^%.2f)"%to_log2_complexity(T1))
         tiv_star_mem, tiv_star_time = waf.k_tree_iv_it_estimator()
         tiv_star_mem = to_log2_complexity(tiv_star_mem)
-        sub_tables[5].add_row(f"2^%.2f"%tiv_star_mem, f"%.2f * T0" % (tiv_star_time/T1))
+        sub_tables[6].add_row(f"2^%.2f"%tiv_star_mem, f"%.2f * T0" % (tiv_star_time/T1))
         tip_mem, tip_time = waf.k_tree_ip_estimator()
         tip_mem = to_log2_complexity(tip_mem)
         assert tip_time == T1
-        sub_tables[6].add_row(f"2^%.2f"%tip_mem, "T1")
+        sub_tables[7].add_row(f"2^%.2f"%tip_mem, "T1")
         # print latex tables for paper.
-        # print(f"({n}, $2^{{{k}}}$) &  $2^{{{cip_mem:.2f}}}$ & $T_0=2^{{{to_log2_complexity(T0):.2f}}}$ & $2^{{{civ_star_mem:.2f}}}$ & ${civ_star_time/T0:.2f} \cdot T_0$ & $2^{{{cip_star_mem:.2f}}}$ & ${cip_star_time/T0:.2f} \cdot T_0$ & $2^{{{tiv_mem:.2f}}}$ & $T_1=2^{{{to_log2_complexity(T1):.2f}}}$ & $2^{{{tiv_star_mem:.2f}}}$ & ${tiv_star_time/T1:.2f} \cdot T_1$ \\\\")
-        print(f"({n}, $2^{{{k}}}$) &  $2^{{{cip_mem:.2f}}}$ & $T_0$ & $2^{{{civ_star_mem:.2f}}}$ & ${civ_star_time/T0:.1f} \cdot T_0$ & $2^{{{cip_star_mem:.2f}}}$ & ${cip_star_time/T0:.1f} \cdot T_0$ & $2^{{{tiv_mem:.2f}}}$ & $T_1$ & $2^{{{tiv_star_mem:.2f}}}$ & ${tiv_star_time/T1:.1f} \cdot T_1$ \\\\")
+        print(f"({n}, {k}) &  $2^{{{cip_mem:.2f}}}$ & $2^{{{civ_star_mem:.2f}}}$ & ${civ_star_time/T0:.1f} \cdot T_0$ & $2^{{{cip_star_mem:.2f}}}$ & ${cip_star_time/T0:.1f} \cdot T_0$ & $2^{{{hybrid_mem:.2f}}}$ & ${hybrid_time/T0:.1f} \cdot T_0$ & $2^{{{tiv_mem:.2f}}}$ & $2^{{{tiv_star_mem:.2f}}}$ & ${tiv_star_time/T1:.1f} \cdot T_1$ \\\\")
         
     sub_tables = [st0] + sub_tables
     table.add_row(*sub_tables)
     console = Console()
     console.print(table)
-    console.print(Text("Remark 1: If CIP-PR uses external memory, all time complexity will be upper bounded by c*T0 where c in [1, 2).", style="italic bold"))
-    console.print(Text("Remark 2: Algorithms with * are new results in this work.", style="italic bold"))
+    console.print(Text("Remark 1: If CIP-PR uses external memory, all time complexity will be upper bounded by c*T0 where c approx 1.", style="italic bold"))
 
 def concrete_civ_trade_offs():
     # the commented parameters do not satisfy k<= sqrt{n/2 + 1} and the single-list algorithm succeeds with small prob.
@@ -178,7 +183,6 @@ def concrete_civ_trade_offs():
         row.append(f"2^{to_log2_complexity(result['peak_mem1']):.2f}")
         row.append(f"{result['runtime1']/T0:.2f} * T0")
         row.append(f"{result['peak_layer1']}")
-        
         
         row.append(f"{result['switching_height2']}")
         row.append(f"2^{to_log2_complexity(result['peak_mem2']):.2f}")
@@ -274,12 +278,12 @@ def concrete_hybrid_trade_offs(h1_max = 2, h2_min = None, max_gamma = 4.0):
         row.append(f"{result['(n,k)']}")
         row.append(f"2^{to_log2_complexity(cip_mem):.2f}")
         row.append(f"2^{to_log2_complexity(result['peak_mem']):.2f}")
-        row.append(f"{result['runtime']/T0:.2f} * T0")
+        row.append(f"{result['runtime']/T0:.1f} * T0")
         row.append(f"{result['switching_height1']}")
         row.append(f"{result['switching_height2']}")
         row.append(f"{result['peak_layer']}")
         table.add_row(*row)
-        print(f"({n}, {k}) & $2^{{{to_log2_complexity(cip_mem):.2f}}}$ & $2^{{{to_log2_complexity(result['peak_mem']):.2f}}}$ & ${result['runtime']/T0:.2f} \cdot T_0$ & {result['switching_height1']} & {result['switching_height2']} & {result['peak_layer']}\\\\")
+        print(f"({n}, {k}) & $2^{{{to_log2_complexity(cip_mem):.2f}}}$ & $2^{{{to_log2_complexity(result['peak_mem']):.2f}}}$ & ${result['runtime']/T0:.1f} \cdot T_0$ & {result['switching_height1']} & {result['switching_height2']} & {result['peak_layer']}\\\\")
         
     console = Console()
     console.print(table)
@@ -287,5 +291,5 @@ def concrete_hybrid_trade_offs(h1_max = 2, h2_min = None, max_gamma = 4.0):
 if __name__ == "__main__":
     # concrete_civ_trade_offs()
     # concrete_cip_trade_offs()
-    # hybrid_single_chain_all_paras()
     concrete_hybrid_trade_offs()
+    # revisiting_equihash_parameters()

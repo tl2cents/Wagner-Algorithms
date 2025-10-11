@@ -20,6 +20,7 @@ algorithm_types = {
     'ip_pr': "Index Pointer with Post Retrieval",
     'ip_em': "Index Pointer with External Memory",
     'iv_it': "Index Vector with Index Trimming", # Single Bit Index Case
+    'iv_it_star': "Index Vector with Index Trimming (multiple runs)", # Single Bit Index Case
 }
 
 
@@ -38,7 +39,7 @@ def run_with_memory_trace(func, *args, **kwargs):
 def blake2b(data : bytes, digest_byte_size : int = 64) -> bytes:
     return hashlib.blake2b(data, digest_size = digest_byte_size).digest()
 
-class single_list_wagner_algorithm:
+class single_chain_wagner_algorithm:
     """ 
     An optimized implementation of single-list algorithm. In this proof of concept, there are two kinds of implementations:
     1. Implementation of index pointers.
@@ -85,12 +86,12 @@ class single_list_wagner_algorithm:
             "ip_pr": self.solve_index_pointer_with_post_retrieval,
             "ip_em": self.solve_index_pointer_with_external_memory,
             "iv_it": self.solve_index_vector_with_single_bit_and_2_runs, 
-            # "iv_it": self.solve_index_vector_with_single_bit,
+            "iv_it_star": self.solve_index_vector_with_single_bit,
         }
         
     @staticmethod
     def new(n, k, hashfunc = None):
-        return single_list_wagner_algorithm(n, k, hashfunc)
+        return single_chain_wagner_algorithm(n, k, hashfunc)
     
     def _estimate_plain_iv(self) -> tuple[int, int]:
         """ 
@@ -128,8 +129,9 @@ class single_list_wagner_algorithm:
             float: the estimated memory complexity: log2(mem) (measured in bits) 
         """
         index_bit = index_bit if index_bit is not None else self.ell + 1
+        if layer_size == 0:
+            return 0
         return log2(layer_size * (2**layer * index_bit + self.n - self.mask_bit * layer))
-        
 
     def compute_hash_item(self, i: int):
         """ 
@@ -165,16 +167,16 @@ class single_list_wagner_algorithm:
         Returns:
             list[int] or list[tuple[int, int]]: the generated hash list with or without index
         """
-        single_list_size = self.N
+        single_chain_size = self.N
         hash_list = []        
         if index_bit is None:
-            for j in range(single_list_size):
+            for j in range(single_chain_size):
                 hashval = self.compute_hash_item(j)
                 hash_list.append(hashval)
         else:
             idx = 0
             mask = (1 << index_bit) - 1
-            for j in range(single_list_size):
+            for j in range(single_chain_size):
                 hashval = self.compute_hash_item(j)
                 hash_list.append((hashval, [idx]))
                 idx += 1
@@ -807,7 +809,7 @@ def upper_bound(n):
 # (128, 7) bytes.fromhex("e11c0fbda860aa57d3d8d68b11be0ba5")
 # (80, 4)  bytes.fromhex("d5f561bc83485b0a2732c8cb9f7f140e")
 
-def run_single_list_algorithm(n: int, k: int, nonce: bytes, algo_type: str, verbose: bool = False, trace_memory: bool = False):
+def run_single_chain_algorithm(n: int, k: int, nonce: bytes, algo_type: str, verbose: bool = False, trace_memory: bool = False):
     """
     Run single list algorithm tester with the given `algo_type` in ['plain_ip', 'plain_iv', 'ip_pr', 'ip_em', 'iv_it'].
 
@@ -822,7 +824,7 @@ def run_single_list_algorithm(n: int, k: int, nonce: bytes, algo_type: str, verb
     assert algo_type in algorithm_types
     print("==" * 10 + f"Run {algorithm_types[algo_type]}" + "==" * 10)
     print(f"{nonce.hex() = }")
-    solver = single_list_wagner_algorithm(n, 2**k, nonce=nonce)
+    solver = single_chain_wagner_algorithm(n, 2**k, nonce=nonce)
     print(f"n = {n}, k = {k}, upper_k = {upper_bound(n)}, ell = {n/(k+1)}")
     st = time.time()
     if trace_memory:
@@ -846,24 +848,24 @@ def pretty_print_box(header: str, content: str):
 def paper_index_pointer_tests():
     n, k = (128, 7) 
     nonce = bytes.fromhex("e11c0fbda860aa57d3d8d68b11be0ba5")
-    run_single_list_algorithm(n, k, nonce, 'plain_ip', verbose=False, trace_memory=False)
-    run_single_list_algorithm(n, k, nonce, 'ip_pr', verbose=False, trace_memory=False)
-    run_single_list_algorithm(n, k, nonce, 'ip_em', verbose=False, trace_memory=False)
-    run_single_list_algorithm(n, k, nonce, 'plain_ip', verbose=False, trace_memory=True)
-    run_single_list_algorithm(n, k, nonce, 'ip_pr', verbose=False, trace_memory=True)
-    run_single_list_algorithm(n, k, nonce, 'ip_em', verbose=False, trace_memory=True)
+    run_single_chain_algorithm(n, k, nonce, 'plain_ip', verbose=False, trace_memory=False)
+    run_single_chain_algorithm(n, k, nonce, 'ip_pr', verbose=False, trace_memory=False)
+    run_single_chain_algorithm(n, k, nonce, 'ip_em', verbose=False, trace_memory=False)
+    run_single_chain_algorithm(n, k, nonce, 'plain_ip', verbose=False, trace_memory=True)
+    run_single_chain_algorithm(n, k, nonce, 'ip_pr', verbose=False, trace_memory=True)
+    run_single_chain_algorithm(n, k, nonce, 'ip_em', verbose=False, trace_memory=True)
 
 def paper_index_vector_tests():
     n, k = (128, 7) 
     nonce = bytes.fromhex("e11c0fbda860aa57d3d8d68b11be0ba5")
     remarks = "Our proof-of-concept implementation is not optimized for index vector storage in Python. Since indices are represented as int objects, a 1-bit value and an 8-bit value occupy the same memory. As a result, the observed peak memory reduction from index trimming is less significant than the theoretical expectation. Here, our implementation only aims to validate the theoretical correctness rather than optimize performance."
     pretty_print_box("Remarks", remarks)
-    run_single_list_algorithm(n, k, nonce, 'plain_iv', verbose=True, trace_memory=False)
-    run_single_list_algorithm(n, k, nonce, 'iv_it', verbose=True, trace_memory=False)
+    run_single_chain_algorithm(n, k, nonce, 'plain_iv', verbose=True, trace_memory=False)
+    run_single_chain_algorithm(n, k, nonce, 'iv_it', verbose=True, trace_memory=False)
     # The peak memory observed in our proof-of-concept implementation remains nearly the same, since all indices are stored as `int` in python. 
-    # run_single_list_algorithm(n, k, nonce, 'plain_iv', verbose=False, trace_memory=True)
-    # run_single_list_algorithm(n, k, nonce, 'iv_it', verbose=False, trace_memory=True)
-    # run_single_list_algorithm(n, k, nonce, 'iv_it+', verbose=False, trace_memory=True)
+    # run_single_chain_algorithm(n, k, nonce, 'plain_iv', verbose=False, trace_memory=True)
+    # run_single_chain_algorithm(n, k, nonce, 'iv_it', verbose=False, trace_memory=True)
+    # run_single_chain_algorithm(n, k, nonce, 'iv_it+', verbose=False, trace_memory=True)
     
 
 
