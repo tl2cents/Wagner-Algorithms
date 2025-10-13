@@ -87,6 +87,10 @@ class Wagner_Algorithmic_Framework:
             M += ((2**i) * idx_len + self.n - i * self.ell) * N_h(i)
             T += 2**(self.k - 1 - i) * 2 * N_h(i)
         return M, T
+    
+    def kiv_list_sizes_with_constraints(self, t: int):
+        def N_h(h): return max(2 ** (self.ell - t * 2**h), 1)  # list size at height h, size >= 1 if solution exists
+        return [N_h(h) for h in range(self.k)]
 
     def _search_best_k_tree_iv_index_trimming(self, verbose: bool = False):
         """
@@ -197,7 +201,8 @@ class Wagner_Algorithmic_Framework:
                 current_size = current_size
             else:
                 assert max_candidates[i + 1] < max_permutations[i + 1]
-                current_size = max((max_candidates[i + 1] / max_permutations[i + 1]) * (current_size * (current_size - 1)/ 2) / 2**self.ell, 1)
+                # in the second run, the minimum size of layer i is at least: 2^(k - i)
+                current_size = max((max_candidates[i + 1] / max_permutations[i + 1]) * (current_size * (current_size - 1)/ 2) / 2**self.ell, 2**(self.k - i - 1))
         return threshold_h, layer_sizes
     
     def civ_concrete_parameters(self, trimmed_length: int, switching_height1: int, switching_height2: int, verbose: bool = False):
@@ -432,15 +437,18 @@ class Wagner_Algorithmic_Framework:
                     }
                 return result
     
-    def search_best_hybrid_single_chian(self, h1_upper: int = 2, verbose: bool = False):
+    def search_best_hybrid_single_chian(self, h1_upper: int = 2, h2_min: int = None, max_gamma: float = 4.0, verbose: bool = False):
         """ Find the best parameters for hybrid_single_chian algorithm.
 
         Args:
-            h1_upper(int, optional): the max layer height for XOR-Removal technique.
+            h1_upper(int, optional): the max layer height for applying XOR-Removal technique.
+            h2_min(int, optional): the min starting height for storing index pointer.
+            max_gamma(int, optional): the max time penalty factor.
             verbose (bool, optional): whether to print debug information. Defaults to False.
         """
-        h2_min = ceil((self.k - 1) / 2)
+        h2_min = ceil((self.k - 1) / 2) if h2_min is None else h2_min
         M0, T0 = self.single_list_ip_estimator()
+        best_paras = None
         if verbose: print(f"Peak memory for plain cip{(self.n, self.k)}: {to_log2_complexity(M0):.2f}")
         for h1 in range(h1_upper + 1):
             # 0~h1: XOR removal + Index Vector 
@@ -460,6 +468,18 @@ class Wagner_Algorithmic_Framework:
                 extra_runtime = sum([i for i in range(h1, h2+1)]) * self.N # post retrieval
                 extra_runtime += (2**(h1 + 1) - 2) * self.N * (h2 + 1 - h1 + 1) # xor-removal
                 if verbose: print(f"{h1 = }, {h2 = }, peak: {to_log2_complexity(peak_mem):.2f}, {peak_layer = }, extra runtime {extra_runtime/T0:.2f} * T0")
+                if (extra_runtime/T0 + 1) <= max_gamma:
+                    if best_paras is None or best_paras[0] > peak_mem:
+                        best_paras = (peak_mem, extra_runtime, h1, h2, peak_layer)
+        result = {
+            '(n,k)': (self.n, self.k),
+            'peak_mem': best_paras[0],
+            'runtime': best_paras[1] + T0,
+            'switching_height1': best_paras[2],
+            'switching_height2': best_paras[3],
+            'peak_layer': best_paras[4],
+        }
+        return result
     
 def test():
     waf = Wagner_Algorithmic_Framework(200, 9)

@@ -1,9 +1,22 @@
 """ 
-Proof of concept implementations of in-place merge (colliding ell bits). This includes:
+Proof of concept implementations of in-place merge (colliding ell bits). The underlying sorting algorithms include:
     - in_place_quick_sort: O(n log n) time complexity.
     - in_place_heap_sort: O(n log n) time complexity.
-    - in_place_counting_sort (or bucket sort?): O(n) time complexity with O(k) space complexity where k is the range of input values.
-The paper "Optimal In-Place Suffix Sorting" by Zhize Li, Jian Li, and Hongwei Huo provides a linear time in-place sorting algorithm for suffix arrays which perfectly fits our needs. See: https://link.springer.com/chapter/10.1007/978-3-030-00479-8_22 for details.
+    - in_place_counting_sort (or bucket/radix sort): O(n) time complexity with O(n + k) space complexity where k is the range of input values.
+    - inplace_radix_sort: almost O(n) time complexity with O(1) space complexity.
+
+## More references and advanced implementations.
+    Technique Blog:
+    - https://duvanenko.tech.blog/2022/04/09/in-place-binary-radix-sort/
+    - https://duvanenko.tech.blog/2022/04/10/in-place-n-bit-radix-sort/
+    - https://github.com/DragonSpit/ParallelAlgorithms
+    - https://github.com/voutcn/kxsort
+    - Wiki: https://en.wikipedia.org/wiki/Radix_sort#In-place_MSD_radix_sort_implementations
+  
+    Paper:
+    - Fast In-place Integer Radix Sorting: https://link.springer.com/chapter/10.1007/11428862_107
+    - Theoretically-Efficient and Practical Parallel In-Place Radix Sorting: https://jshun.csail.mit.edu/RegionsSort.pdf
+    - PARADIS: an efficient parallel algorithm for in-place radix sort: https://dl.acm.org/doi/10.14778/2824032.2824050
 """
 import random
 import tracemalloc
@@ -140,27 +153,53 @@ def count_sort_partial_inplace(arr, kmax, key=lambda x: x):
             arr[i] = val
 
 
-def _merge_sorted_array_inplace(arr: list, ell: int):
-    n = len(arr)
-    write = 0
-    i = 0
-    mask = (1 << ell) - 1
-    while i < n:
-        key = arr[i] & mask
-        start = i
-        while i < n and (arr[i] & mask) == key:
-            i += 1
-        end = i
-        group = []
-        for i1 in range(start, end):
-            for i2 in range(i1 + 1, end):
-                group.append((arr[i1] ^ arr[i2]) >> ell)
-        arr[write:write + len(group)] = group
-        write += len(group)
-        assert write <= i, f"Write new items into slots that have not been read, {write = }, {start = }, {end = }, {len(group) = }."
-        del group
-    del arr[write:]
-    return arr
+def radix_sort_inplace(arr, n_lsb):
+    """ Radix sort for n_lsb bits. Use buckets of size 2^8
+    """
+    if n_lsb % 8 == 0:
+        initial_shift = n_lsb - 8
+    else:
+        initial_shift = n_lsb  - n_lsb % 8
+    key_mask = (1 << n_lsb) - 1
+    key = lambda x: x & key_mask
+    radix_bits = 8
+    radix_size = 1 << radix_bits
+    radix_mask = radix_size - 1
+    
+    def sort_recursive(start, end, bit_shift):
+        
+        if start >= end - 1 or bit_shift < 0:
+            return
+        counts = [0] * radix_size
+        for i in range(start, end):
+            digit = (key(arr[i]) >> bit_shift) & radix_mask
+            counts[digit] += 1
+
+        offsets = [0] * radix_size
+        offsets[0] = start
+        for i in range(1, radix_size):
+            offsets[i] = offsets[i-1] + counts[i-1]
+        
+        bucket_starts = list(offsets)
+
+        for b in range(radix_size): 
+            while offsets[b] < bucket_starts[b] + counts[b]:
+                current_pos = offsets[b]
+                current_elem = arr[current_pos]
+                elem_digit = (key(current_elem) >> bit_shift) & radix_mask
+
+                if elem_digit == b:
+                    offsets[b] += 1
+                else:
+                    dest_pos = offsets[elem_digit]
+                    arr[current_pos], arr[dest_pos] = arr[dest_pos], arr[current_pos]
+                    offsets[elem_digit] += 1
+        
+        next_bit_shift = bit_shift - radix_bits
+        for b in range(radix_size):
+            sort_recursive(bucket_starts[b], bucket_starts[b] + counts[b], next_bit_shift)
+
+    sort_recursive(0, len(arr), initial_shift)
 
 def merge_sorted_array_inplace(arr: list, ell: int):
     n = len(arr)
@@ -168,6 +207,7 @@ def merge_sorted_array_inplace(arr: list, ell: int):
     i = 0
     mask = (1 << ell) - 1
     group = []
+    max_group_length = 0
     while i < n:
         key = arr[i] & mask
         start = i
@@ -177,6 +217,8 @@ def merge_sorted_array_inplace(arr: list, ell: int):
         for i1 in range(start, end):
             for i2 in range(i1 + 1, end):
                 group.append((arr[i1] ^ arr[i2]) >> ell)
+        if len(group) > max_group_length:
+            max_group_length = len(group)
         if len(group) + write <= i:
             arr[write:write + len(group)] = group
             write += len(group)
@@ -186,6 +228,7 @@ def merge_sorted_array_inplace(arr: list, ell: int):
             arr[write:end] = group[:end - write]
             group = group[end - write:]
             write = end
+    print(f"Max temporary array length in merge: {max_group_length}")
     if len(group) > 0:
         assert write == n
         arr.extend(group)
@@ -211,6 +254,11 @@ def merge_csort_NOT_inplace(arr: list, ell: int):
     count_sort_partial_inplace(arr, 2**ell, key=lambda x: x & mask)
     return merge_sorted_array_inplace(arr, ell)
 
+def merge_rsort_inplace(arr: list, ell: int):
+    """Merge using radix sort implementation for ell-bit suffix."""
+    radix_sort_inplace(arr, ell)
+    return merge_sorted_array_inplace(arr, ell)
+
 def merge_timsort_NOT_inplace(arr: list, ell: int):
     """Merge using python's built-in tim-sort implementation for ell-bit suffix."""
     mask = (1 << ell) - 1
@@ -219,7 +267,7 @@ def merge_timsort_NOT_inplace(arr: list, ell: int):
     return merge_sorted_array_inplace(arr, ell)
 
 if __name__ == "__main__":
-    random.seed(0x123456)
+    random.seed(0xdeadbeef)
     # Equihash(128,7), Equihash(200,9)
     n, k = 200, 9
     # n, k = 128, 7
@@ -228,9 +276,10 @@ if __name__ == "__main__":
     print("Original Data length:", len(data))
     current_mem = get_mem_mb()
     print(f"Current memory: {current_mem:.3f} MB")
-    data = monitor_memory(merge_qsort_inplace, data, ell)
+    # monitor_memory(merge_qsort_inplace, data, ell)
     # monitor_memory(merge_hsort_inplace, data, ell)
     # monitor_memory(merge_csort_NOT_inplace, data, ell)
     # monitor_memory(merge_timsort_NOT_inplace, data, ell)
+    monitor_memory(merge_rsort_inplace, data, ell)
     print("Merged data length:", len(data))
     print("Merged data (first 10 elements):", [hex(x) for x in data[:10]])

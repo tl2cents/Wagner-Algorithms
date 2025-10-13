@@ -27,7 +27,7 @@ def run_with_memory_trace(func, *args, **kwargs):
 def blake2b(data : bytes, digest_byte_size : int = 64) -> bytes:
     return hashlib.blake2b(data, digest_size = digest_byte_size).digest()
 
-class k_list_wagner_algorithm:
+class k_tree_wagner_algorithm:
     
     def __init__(self, n, k, nonce: bytes = None, hashfunc = None):
         """
@@ -63,7 +63,7 @@ class k_list_wagner_algorithm:
     @staticmethod
     def new(n, k, nonce = None, hashfunc = None):
         """
-        Create a new instance of k_list_wagner_algorithm.
+        Create a new instance of k_tree_wagner_algorithm.
 
         Args:
             n (int): The output bit length of the hash function.
@@ -72,9 +72,9 @@ class k_list_wagner_algorithm:
             hashfunc (function, optional): The hash function to use. Defaults to (blake2b).
 
         Returns:
-            k_list_wagner_algorithm: A new instance of k_list_wagner_algorithm.
+            k_tree_wagner_algorithm: A new instance of k_tree_wagner_algorithm.
         """
-        return k_list_wagner_algorithm(n, k, nonce, hashfunc)
+        return k_tree_wagner_algorithm(n, k, nonce, hashfunc)
         
     def hash_merge(self, L1: list, L2: list, mask_bit: int) -> list:
         """
@@ -222,25 +222,12 @@ class k_list_wagner_algorithm:
             assert hashval == 0, f"{hashval = }"
         print(f"All {len(result_indices)} solutions are correct!")
     
-# def k_list_tester():
-#     n = 112
-#     k = 2 ** 6
-#     nonce = os.urandom(16)
-#     nonce = bytes.fromhex("58c3d5db02bd1617dc3e7844950d6f7c")
-#     print(f"{nonce.hex() = }")
-#     solver = k_list_wagner_algorithm.new(n, k, nonce)
-#     st = time.time()
-#     solutions = solver.solve(verbose=True)
-#     et = time.time()
-#     print(f"Time elapsed: {et - st:.2f} seconds")
-#     solver.verify_results(solutions)
 
-
-def run_k_list_algorithm(n: int, k: int, nonce: bytes, index_bit_length: int = None, verbose: bool = True, trace_memory: bool = False):
+def run_k_tree_algorithm(n: int, k: int, nonce: bytes, index_bit_length: int = None, verbose: bool = True, trace_memory: bool = False):
     print("##" * 10 + f"Run k-list Wagner Algorithm" + "##" * 10)
     print(f"Parameters: n = {n}, k = {k}, index_bit_length = {index_bit_length}")
     print(f"Input nonce: {nonce.hex()}")
-    solver = k_list_wagner_algorithm.new(n, k, nonce)
+    solver = k_tree_wagner_algorithm.new(n, 2**k, nonce)
     st = time.time()
     if trace_memory:
         solutions = run_with_memory_trace(solver.solve, index_bit_length = index_bit_length, verbose=verbose)
@@ -261,12 +248,12 @@ def pretty_print_box(header: str, content: str):
     )
 
 def paper_tests():
-    n, k = 128, 2**7
+    n, k = 128, 7
     nonce = bytes.fromhex("58c3d5db02bd1617dc3e7844950d6f7c")
     remarks = "Our proof-of-concept implementation is not optimized for index vector storage in Python. Since indices are represented as int objects, a 1-bit value and an 8-bit value occupy the same memory. As a result, the observed peak memory reduction from index trimming is less significant than the theoretical expectation. Here, our implementation only aims to validate the theoretical correctness rather than optimized performance."
     pretty_print_box("Remarks", remarks)
-    run_k_list_algorithm(n, k, nonce, index_bit_length=1, verbose=False, trace_memory=True)
-    run_k_list_algorithm(n, k, nonce, verbose=False, trace_memory=True)
+    run_k_tree_algorithm(n, k, nonce, index_bit_length=1, verbose=False, trace_memory=True)
+    run_k_tree_algorithm(n, k, nonce, verbose=False, trace_memory=True)
 
 if __name__ == "__main__":
     paper_tests()
