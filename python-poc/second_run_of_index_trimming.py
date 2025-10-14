@@ -3,6 +3,8 @@ from wagner_algorithmic_estimator import Wagner_Algorithmic_Framework
 from k_tree_algorithm import k_tree_wagner_algorithm, run_k_tree_algorithm
 import os
 from math import log2
+import argparse
+
 
 def theoretic_estimator(n, k, t = 1):
     waf = Wagner_Algorithmic_Framework(n, k)
@@ -10,29 +12,41 @@ def theoretic_estimator(n, k, t = 1):
     k_tree_layer_sizes = waf.kiv_list_sizes_with_constraints(t)
     return single_chain_layer_sizes, k_tree_layer_sizes
 
-def run_paper_case():
-    n = 200
-    k = 9
+
+
+def run_random_case(n=200, k=9, nonce1=None, nonce2=None):
+    assert n % (k + 1) == 0, "n must be divisible by k + 1"
     single_chain_layer_sizes, k_tree_layer_sizes = theoretic_estimator(n, k, 1)
     print("&".join([f"~$2^{{{log2(sz):.2f}}}$~" for sz in single_chain_layer_sizes]) + "\\\\")
     print("&".join([f"~$2^{{{log2(sz):.2f}}}$~" for sz in k_tree_layer_sizes]) + "\\\\")
-    
-    # nonce = os.urandom(16)
-    nonce = bytes.fromhex('2f8355540e1a4ed472aa14eba5534647')
-    print(f"{nonce.hex() = }")
-    # This will take a long time to run since our python implementation is poorly optimized, only for proof-of-concept.
-    # run_k_tree_algorithm(n, k, nonce, index_bit_length=1, verbose=True, trace_memory=False)
-    # nonce = os.urandom(16)
-    nonce = bytes.fromhex('46a9be3479c4a2da4f5ab2cb7fefe79a')
-    print(f"{nonce.hex() = }")
-    run_single_chain_algorithm(n, k, nonce, 'iv_it_star', verbose=True, trace_memory=False)
-    
+
+    if nonce1 is None:
+        nonce1 = os.urandom(16)
+    else:
+        nonce1 = bytes.fromhex(nonce1)
+    print(f"nonce1.hex() = '{nonce1.hex()}'")
+    run_k_tree_algorithm(n, k, nonce1, index_bit_length=1, verbose=True, trace_memory=False)
+
+    if nonce2 is None:
+        nonce2 = os.urandom(16)
+    else:
+        nonce2 = bytes.fromhex(nonce2)
+    print(f"nonce2.hex() = '{nonce2.hex()}'")
+    run_single_chain_algorithm(n, k, nonce2, 'iv_it_star', verbose=True, trace_memory=False)
+
 if __name__ == "__main__":
-    run_paper_case()
+    parser = argparse.ArgumentParser(description="Run Wagner algorithms with optional parameters. Note: This will take a long time for large (n, k) to run since our python implementation is poorly optimized, only for proof-of-concept.")
+    parser.add_argument('--n', type=int, default=200, help='Parameter n (default: 200)')
+    parser.add_argument('--k', type=int, default=9, help='Parameter k (default: 9)')
+    parser.add_argument('--nonce1', type=str, default=None, help='Hex string for nonce1 (default: random)')
+    parser.add_argument('--nonce2', type=str, default=None, help='Hex string for nonce2 (default: random)')
+    args = parser.parse_args()
+    run_random_case(n=args.n, k=args.k, nonce1=args.nonce1, nonce2=args.nonce2)
     
     
-""" 
-This will take a long time to run since our python implementation is poorly optimized, only for proof-of-concept.
+"""
+Note: This will take a long time to run since our python implementation is poorly optimized, only for proof-of-concept.
+paper case: $ python second_run_of_index_trimming.py --n 200 --k 9 --nonce1 2f8355540e1a4ed472aa14eba5534647 --nonce2 46a9be3479c4a2da4f5ab2cb7fefe79a
 
 ## Some logs
 nonce.hex() = '2f8355540e1a4ed472aa14eba5534647'

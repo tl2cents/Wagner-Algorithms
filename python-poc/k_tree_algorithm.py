@@ -247,7 +247,7 @@ def pretty_print_box(header: str, content: str):
         )
     )
 
-def paper_tests():
+def k_tree_tests():
     n, k = 128, 7
     nonce = bytes.fromhex("58c3d5db02bd1617dc3e7844950d6f7c")
     remarks = "Our proof-of-concept implementation is not optimized for index vector storage in Python. Since indices are represented as int objects, a 1-bit value and an 8-bit value occupy the same memory. As a result, the observed peak memory reduction from index trimming is less significant than the theoretical expectation. Here, our implementation only aims to validate the theoretical correctness rather than optimized performance."
@@ -256,4 +256,4 @@ def paper_tests():
     run_k_tree_algorithm(n, k, nonce, verbose=False, trace_memory=True)
 
 if __name__ == "__main__":
-    paper_tests()
+    k_tree_tests()

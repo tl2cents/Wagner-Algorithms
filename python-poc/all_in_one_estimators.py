@@ -34,7 +34,7 @@ def to_TB(mem_complexity):
 def single_list_k_upper_bound(n):
     return sqrt(n/2 + 1)
 
-def revisiting_equihash_parameters():
+def revisiting_equihash_parameters(verbose=True):
     # the commented parameters do not satisfy k<= sqrt{n/2 + 1}, for which single-chain algorithm succeeds with small prob.
     Equihash_Parameter_Set = [
         (96, 5),
@@ -58,14 +58,14 @@ def revisiting_equihash_parameters():
     for n, k in Equihash_Parameter_Set:
         waf = Wagner_Algorithmic_Framework(n, k)
         civ_mem, civ_time = to_log2_complexity(waf.single_list_iv_estimator())
-        civ_star_mem, civ_star_time = to_log2_complexity(waf.single_list_iv_it_estimator())
-        cip_mem, cip_time = to_log2_complexity(waf.single_list_ip_estimator(trade_type="plain"))
-        cip_pr_mem, cip_pr_time = to_log2_complexity(waf.single_list_ip_estimator(trade_type="post_retrieval"))
-        hybrid_result = waf.search_best_hybrid_single_chian()
+        civ_star_mem, civ_star_time = to_log2_complexity(waf.single_list_iv_it_estimator(verbose=verbose))
+        cip_mem, cip_time = to_log2_complexity(waf.single_list_ip_estimator(trade_type="plain", verbose=verbose))
+        cip_pr_mem, cip_pr_time = to_log2_complexity(waf.single_list_ip_estimator(trade_type="post_retrieval", verbose=verbose))
+        hybrid_result = waf.search_best_hybrid_single_chian(verbose=verbose)
         hybrid_mem = to_log2_complexity(hybrid_result["peak_mem"])
         hybrid_time = hybrid_result["runtime"]
         tiv_mem, tiv_time = to_log2_complexity(waf.k_tree_iv_estimator())
-        tiv_star_mem, tiv_star_time = to_log2_complexity(waf.k_tree_iv_it_estimator())
+        tiv_star_mem, tiv_star_time = to_log2_complexity(waf.k_tree_iv_it_estimator(verbose=verbose))
         tip_mem, tip_time = to_log2_complexity(waf.k_tree_ip_estimator())
         pt.add_row([str((n,k)), f"2^%.1f"%civ_mem, f"2^%.1f"%civ_star_mem, f"2^%.1f"%cip_mem, f"2^%.1f"%cip_pr_mem, f"2^%.1f"%hybrid_mem, 
                     f"2^%.1f"%tiv_mem, f"2^%.1f"%tiv_star_mem, f"2^%.1f"%tip_mem])
@@ -135,7 +135,7 @@ def revisiting_equihash_parameters():
     console.print(table)
     console.print(Text("Remark 1: If CIP-PR uses external memory, all time complexity will be upper bounded by c*T0 where c approx 1.", style="italic bold"))
 
-def concrete_civ_trade_offs():
+def concrete_civ_trade_offs(verbose=True):
     # the commented parameters do not satisfy k<= sqrt{n/2 + 1} and the single-list algorithm succeeds with small prob.
     Equihash_Parameter_Set = [
         (96, 5),
@@ -159,7 +159,7 @@ def concrete_civ_trade_offs():
     results = []
     for n, k in Equihash_Parameter_Set:
         waf = Wagner_Algorithmic_Framework(n, k)
-        results.append(waf.single_list_iv_it_estimator(True))
+        results.append(waf.single_list_iv_it_concrete_estimator(verbose=verbose))
     # multi row table
     table = Table(title="Concrete Index Vector Trade-off for GBP(n,2^k)", 
                   padding=(0, 0), 
@@ -195,7 +195,7 @@ def concrete_civ_trade_offs():
     console = Console()
     console.print(table)
     
-def concrete_cip_trade_offs():
+def concrete_cip_trade_offs(verbose=True):
     # the commented parameters do not satisfy k<= sqrt{n/2 + 1} and the single-list algorithm succeeds with small prob.
     Equihash_Parameter_Set = [
         (96, 5),
@@ -216,7 +216,7 @@ def concrete_cip_trade_offs():
     results = []
     for n, k in Equihash_Parameter_Set:
         waf = Wagner_Algorithmic_Framework(n, k)
-        results.append(waf.search_best_ip_with_post_retrieval(True))
+        results.append(waf.search_best_ip_with_post_retrieval(verbose=verbose))
     # multi row table
     table = Table(title="Concrete Index Pointer Trade-off for GBP(n,2^k)", 
                   padding=(0, 0), 
@@ -240,7 +240,7 @@ def concrete_cip_trade_offs():
     console = Console()
     console.print(table)
     
-def concrete_hybrid_trade_offs(h1_max = 2, h2_min = None, max_gamma = 4.0):
+def concrete_hybrid_trade_offs(verbose = True, h1_max = 2, h2_min = None, max_gamma = 4.0):
     # the commented parameters do not satisfy k<= sqrt{n/2 + 1} and the single-list algorithm succeeds with small prob.
     Equihash_Parameter_Set = [
         (96, 5),       # h1 = 1, h2 = 3, peak: 23.04, peak_layer = 4, extra runtime 2.80 * T0
@@ -261,7 +261,7 @@ def concrete_hybrid_trade_offs(h1_max = 2, h2_min = None, max_gamma = 4.0):
     headers = ["(n,k)","plain_peak_mem", "peak_mem", "runtime", "switching_height1", "switching_height2", "peak_layer"]
     for n, k in Equihash_Parameter_Set:
         waf = Wagner_Algorithmic_Framework(n, k)
-        results.append(waf.search_best_hybrid_single_chian(h1_max, h2_min, max_gamma, verbose=True))
+        results.append(waf.search_best_hybrid_single_chian(h1_max, h2_min, max_gamma, verbose=verbose))
     # multi row table
     table = Table(title="Concrete Hybrid Single-Chain Trade-off for GBP(n,2^k)", 
                   padding=(0, 0), 
@@ -289,7 +289,18 @@ def concrete_hybrid_trade_offs(h1_max = 2, h2_min = None, max_gamma = 4.0):
     console.print(table)
         
 if __name__ == "__main__":
-    # concrete_civ_trade_offs()
-    # concrete_cip_trade_offs()
-    concrete_hybrid_trade_offs()
-    # revisiting_equihash_parameters()
+    import argparse
+    parser = argparse.ArgumentParser(description="Run estimator trade-off functions.")
+    parser.add_argument('--mode', type=str, choices=['civ', 'cip', 'hybrid', 'all-in-one'], required=True,
+                        help='Select which function to run: civ, cip, hybrid, all-in-one')
+    parser.add_argument('--verbose', action='store_true', help='Enable verbose output (default: False)')
+    args = parser.parse_args()
+
+    if args.mode == 'civ':
+        concrete_civ_trade_offs(verbose=args.verbose)
+    elif args.mode == 'cip':
+        concrete_cip_trade_offs(verbose=args.verbose)
+    elif args.mode == 'hybrid':
+        concrete_hybrid_trade_offs(verbose=args.verbose)
+    elif args.mode == 'all-in-one':
+        revisiting_equihash_parameters(verbose=args.verbose)

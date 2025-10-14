@@ -21,6 +21,8 @@ Proof of concept implementations of in-place merge (colliding ell bits). The und
 import random
 import tracemalloc
 import os, psutil, threading, time, gc
+import argparse
+
 
 def get_mem_mb():
     process = psutil.Process(os.getpid())
@@ -266,20 +268,38 @@ def merge_timsort_NOT_inplace(arr: list, ell: int):
     # Tim-sort is not in-place sort. It uses extra memory in C which will not be released until program ends
     return merge_sorted_array_inplace(arr, ell)
 
-if __name__ == "__main__":
+def run_random_case(n:int =200, k:int =9, seed: str = None, sorting_method: str ='rsort'):
+    seed = int(seed, 16) if seed is not None else 0xdeadbeef
     random.seed(0xdeadbeef)
-    # Equihash(128,7), Equihash(200,9)
-    n, k = 200, 9
-    # n, k = 128, 7
+    assert n % (k + 1) == 0, "n must be divisible by k + 1"
     ell = n // (k + 1)
     data = [random.getrandbits(n) for _ in range(2**(ell + 1))]
     print("Original Data length:", len(data))
     current_mem = get_mem_mb()
     print(f"Current memory: {current_mem:.3f} MB")
-    # monitor_memory(merge_qsort_inplace, data, ell)
-    # monitor_memory(merge_hsort_inplace, data, ell)
-    # monitor_memory(merge_csort_NOT_inplace, data, ell)
-    # monitor_memory(merge_timsort_NOT_inplace, data, ell)
-    monitor_memory(merge_rsort_inplace, data, ell)
+    if sorting_method == 'qsort':
+        monitor_memory(merge_qsort_inplace, data, ell)
+    elif sorting_method == 'hsort':
+        monitor_memory(merge_hsort_inplace, data, ell)
+    elif sorting_method == 'csort':
+        monitor_memory(merge_csort_NOT_inplace, data, ell)
+    elif sorting_method == 'tsort':
+        monitor_memory(merge_timsort_NOT_inplace, data, ell)
+    elif sorting_method == 'rsort':
+        monitor_memory(merge_rsort_inplace, data, ell)
+    else:
+        raise ValueError(f"Unknown sorting method: {sorting_method}")
+    # check is sorted
     print("Merged data length:", len(data))
-    print("Merged data (first 10 elements):", [hex(x) for x in data[:10]])
+    
+    
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run Python PoC for In-place Merge.")
+    parser.add_argument('--n', type=int, default=200, help='Parameter n (default: 200)')
+    parser.add_argument('--k', type=int, default=9, help='Parameter k (default: 9)')
+    parser.add_argument('--seed', type=str, default=None, help='Hex string for seed (default: 0xdeadbeef)')
+    parser.add_argument('--algo', type=str, default='rsort', choices=['qsort', 'hsort', 'csort', 'rsort', 'tsort'],
+                        help='Sorting algorithm: qsort, hsort, csort, rsort, tsort (default: rsort)')
+    args = parser.parse_args()
+    
+    run_random_case(n=args.n, k=args.k, seed=args.seed, sorting_method=args.algo)

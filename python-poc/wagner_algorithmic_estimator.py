@@ -378,19 +378,25 @@ class Wagner_Algorithmic_Framework:
         """
         Search for the best index trimming bit length for single-list algorithm with limited XOR-removal. Make sure the time complexity is acceptable (approximately twofold~threefold).
             
-        ## Returns (verbose=False)
+        ## Returns
             - peak memory (int): the total peak memory.
             - total runtime: the total runtime in the trade-off (in range T0 ~ 3*T0) where T0 is the time complexity of plain algorithm.
             
-        ## Returns (verbose=True)
+        """
+        if verbose: print("##########"*8)
+        peak_mem, trimmed_length, threshold_h, switching_height1, switching_height2, runtime_overhead = self.search_best_single_list_iv_it(verbose=verbose)
+        return peak_mem, self.single_list_time_estimator() + runtime_overhead
+    
+    def single_list_iv_it_concrete_estimator(self, verbose: bool = False):
+        """
+        Search for the best index trimming bit length for single-list algorithm with limited XOR-removal. Make sure the time complexity is acceptable (approximately twofold~threefold).
+            
+        ## Returns
             - detailed information dictionary of this trade-off.
         """
         if verbose: print("##########"*8)
         peak_mem, trimmed_length, threshold_h, switching_height1, switching_height2, runtime_overhead = self.search_best_single_list_iv_it(verbose=verbose)
-        if verbose: 
-            return self.civ_concrete_parameters(trimmed_length, switching_height1, switching_height2, verbose)
-        else:
-            return peak_mem, self.single_list_time_estimator() + runtime_overhead
+        return self.civ_concrete_parameters(trimmed_length, switching_height1, switching_height2, verbose=verbose)
     
     def single_list_ip_estimator(self, trade_type: str = "plain", verbose: bool = False):
         assert trade_type in ["plain", "post_retrieval", "external_memory"]

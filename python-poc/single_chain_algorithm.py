@@ -845,7 +845,7 @@ def pretty_print_box(header: str, content: str):
         )
     )
 
-def paper_index_pointer_tests():
+def index_pointer_tests():
     n, k = (128, 7) 
     nonce = bytes.fromhex("e11c0fbda860aa57d3d8d68b11be0ba5")
     run_single_chain_algorithm(n, k, nonce, 'plain_ip', verbose=False, trace_memory=False)
@@ -855,7 +855,7 @@ def paper_index_pointer_tests():
     run_single_chain_algorithm(n, k, nonce, 'ip_pr', verbose=False, trace_memory=True)
     run_single_chain_algorithm(n, k, nonce, 'ip_em', verbose=False, trace_memory=True)
 
-def paper_index_vector_tests():
+def index_vector_tests():
     n, k = (128, 7) 
     nonce = bytes.fromhex("e11c0fbda860aa57d3d8d68b11be0ba5")
     remarks = "Our proof-of-concept implementation is not optimized for index vector storage in Python. Since indices are represented as int objects, a 1-bit value and an 8-bit value occupy the same memory. As a result, the observed peak memory reduction from index trimming is less significant than the theoretical expectation. Here, our implementation only aims to validate the theoretical correctness rather than optimize performance."
@@ -866,9 +866,7 @@ def paper_index_vector_tests():
     # run_single_chain_algorithm(n, k, nonce, 'plain_iv', verbose=False, trace_memory=True)
     # run_single_chain_algorithm(n, k, nonce, 'iv_it', verbose=False, trace_memory=True)
     # run_single_chain_algorithm(n, k, nonce, 'iv_it+', verbose=False, trace_memory=True)
-    
-
 
 if __name__ == "__main__":
-    # paper_index_pointer_tests()
-    paper_index_vector_tests()
+    index_pointer_tests()
+    index_vector_tests()
