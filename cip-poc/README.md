@@ -29,15 +29,13 @@ The script automatically compiles the implementations and executes the benchmark
 * **CPU**: AMD Ryzen 7 PRO 6850HS with Radeon Graphics (16 threads) @ 4.785 GHz
   * benchmarks were conducted in single-threaded mode
 * **OS**: Ubuntu 24.04.2 LTS x86_64
-
-*Benchmark data to be updated.*
+* 1000 diffrent nonces were tested for each algorithm.
 
 | Algorithm        | Sol/s | PeakRSS (kB) |
-|------------------|-------|---------------|
-| CIP              | 1.27  | 161,468       |
-| CIP-PR           | 0.24  | 75,092        |
-| CIP-EM           | 1.07  | 74,752        |
-| Tromp-Baseline   | 4.03  | 138,752       |
-
+|------------------|-------|--------------|
+| CIP              | 1.46  | 163,808      |
+| CIP-PR           | 0.28  | 77,212       |
+| CIP-EM           | 1.33  | 77,188       |
+| Tromp-Baseline   | 6.30  | 150,016      |
 
 *Note:* The BLAKE2b implementation in Tromp’s original code was **slightly modified** based on [this issue comment](https://github.com/Raptor3um/raptoreum/issues/48#issuecomment-969125200) to ensure successful compilation.

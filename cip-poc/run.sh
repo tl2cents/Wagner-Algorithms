@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-ITERS=10
+ITERS=1000
 SEED=42
 
 echo -e "${BLUE}======================================${NC}"
