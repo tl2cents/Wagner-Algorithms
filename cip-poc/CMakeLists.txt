@@ -39,9 +39,6 @@ add_custom_target(benchmark
         COMMENT "Running built-in performance benchmark..."
 )
 
-# -------------------------------
-# 信息输出
-# -------------------------------
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER}")
 message(STATUS "RSS profiling: ${PROFILE_RSS}")
