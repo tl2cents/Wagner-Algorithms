@@ -30,12 +30,3 @@ python all_in_one_estimators.py --mode hybrid
 # python all_in_one_estimators.py --mode cip
 ```
 
-
-## Merge In-Place PoC
-
-To test the in-place merge algorithms with multiple sorting algorithms, run:
-
-```bash
-python merge_in_place.py --n 200 --k 9 --seed deadbeef --algo rsort
-```
-with choices of `--algo` in `['qsort', 'hsort', 'csort', 'rsort', 'tsort']`.
