@@ -149,8 +149,8 @@ static int run_mode_cip(int seed, int iters, bool do_check, bool verbose,
     std::cout << std::fixed << std::setprecision(2) << "mode=cip sort="
               << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
               << " iters=" << iters << " seed_range=" << seed << "-"
-              << (seed + iters - 1) << " forward_expand_avg_s=" << avg_fwd
-              << " verify_avg_s=" << avg_ver << " peakRSS_kB=" << peak_kb
+              << (seed + iters - 1) << " single_run_time=" << avg_fwd
+              << " peakRSS_kB=" << peak_kb
               << " total_sols=" << total_sols << " Sol/s=" << sols_per_s
               << std::endl;
     std::free(base);
@@ -205,8 +205,8 @@ static int run_mode_pr(int seed, int iters, bool do_check, bool verbose,
     std::cout << std::fixed << std::setprecision(2) << "mode=cip-pr sort="
               << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
               << " iters=" << iters << " seed_range=" << seed << "-"
-              << (seed + iters - 1) << " forward_expand_avg_s=" << avg_fwd
-              << " verify_avg_s=" << avg_ver << " peakRSS_kB=" << peak_kb
+              << (seed + iters - 1) << " single_run_time=" << avg_fwd
+              << " peakRSS_kB=" << peak_kb
               << " total_sols=" << total_sols << " Sol/s=" << sols_per_s
               << std::endl;
     std::free(base);
@@ -260,8 +260,8 @@ static int run_mode_apr(int seed, int iters, bool do_check, bool verbose,
     std::cout << std::fixed << std::setprecision(2) << "mode=cip-apr sort="
               << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
               << " iters=" << iters << " seed_range=" << seed << "-"
-              << (seed + iters - 1) << " forward_expand_avg_s=" << avg_fwd
-              << " verify_avg_s=" << avg_ver << " peakRSS_kB=" << peak_kb
+              << (seed + iters - 1) << " single_run_time=" << avg_fwd
+              << " peakRSS_kB=" << peak_kb
               << " total_sols=" << total_sols << " Sol/s=" << sols_per_s
               << std::endl;
     std::free(base);
@@ -317,73 +317,24 @@ static int run_mode_em(int seed, int iters, bool do_check, bool verbose,
     std::cout << std::fixed << std::setprecision(2) << "mode=cip-em sort="
               << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
               << " iters=" << iters << " seed_range=" << seed << "-"
-              << (seed + iters - 1) << " forward_expand_avg_s=" << avg_fwd
-              << " verify_avg_s=" << avg_ver << " peakRSS_kB=" << peak_kb
+              << (seed + iters - 1) << " single_run_time=" << avg_fwd
+              << " peakRSS_kB=" << peak_kb
               << " total_sols=" << total_sols << " Sol/s=" << sols_per_s
               << std::endl;
     std::free(base);
     return 0;
 }
 
-static int run_mode_emc(int seed, int iters, bool do_check, bool verbose,
-                        const std::string &sort_name, const std::string &em_path)
-{
-    g_verbose = verbose;
-    g_sort_algo = (sort_name == "std") ? SortAlgo::STD : SortAlgo::KXSORT;
-    double t_fwd_exp_sum = 0.0, t_verify_sum = 0.0;
-    size_t total_sols = 0;
-    uint8_t *base = static_cast<uint8_t *>(std::malloc(MAX_CIP_EMC_BYTES));
-    if (base == nullptr)
-    {
-        std::cerr << "Failed to allocate " << (MAX_CIP_EMC_BYTES / (1024 * 1024))
-                  << " MB of memory" << std::endl;
-        return 1;
-    }
-    // Touch the allocation to ensure pages are committed (avoids lazy-fault surprises).
-    std::memset(base, 0, MAX_CIP_EMC_BYTES);
-
-    for (int it = 0; it < iters; ++it)
-    {
-        int current_seed = seed + it;
-
-        auto t0 = now_s();
-        std::vector<Solution> solutions = cip_em_extra_ip_cache(current_seed, em_path, base);
-        auto t1 = now_s();
-        t_fwd_exp_sum += (t1 - t0);
-
-        if (do_check)
-        {
-            auto t2 = now_s();
-            check_zero_xor(current_seed, solutions);
-            auto t3 = now_s();
-            t_verify_sum += (t3 - t2);
-        }
-        total_sols += solutions.size();
-    }
-
-    long peak_kb = peak_rss_kb();
-    double avg_fwd = t_fwd_exp_sum / std::max(1, iters);
-    double avg_ver = t_verify_sum / std::max(1, iters);
-    double sols_per_s = (do_check && t_fwd_exp_sum > 0.0);
-    std::cout << std::fixed << std::setprecision(2) << "mode=cip-emc sort="
-              << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
-              << " iters=" << iters << " seed_range=" << seed << "-"
-              << (seed + iters - 1) << " forward_expand_avg_s=" << avg_fwd
-              << " verify_avg_s=" << avg_ver << " peakRSS_kB=" << peak_kb
-              << " total_sols=" << total_sols << " Sol/s=" << sols_per_s
-              << std::endl;
-    std::free(base);
-    return 0;
-}
+// `cip-emc` mode removed: no longer supported.
 
 // ------------ test harness (isolation via exec) ------------
 static int run_test_harness(int seed, int iters, bool do_check,
                             const std::string &sortopt, const std::string &em_path)
 {
     const std::string exe = self_exe_path();
-    const char *modes[5] = {"cip", "cip-pr", "cip-apr", "cip-em", "cip-emc"};
+    const char *modes[4] = {"cip", "cip-pr", "cip-apr", "cip-em"};
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < 4; ++i)
     {
         std::vector<std::string> args;
         args.push_back(exe);
@@ -393,7 +344,7 @@ static int run_test_harness(int seed, int iters, bool do_check,
         args.push_back(std::string("--sort=") + sortopt);
         if (do_check)
             args.push_back("--check");
-        if (std::string(modes[i]) == "cip-em" || std::string(modes[i]) == "cip-emc")
+        if (std::string(modes[i]) == "cip-em")
         {
             args.push_back(std::string("--em=") + em_path);
         }
@@ -409,7 +360,7 @@ static int run_test_harness(int seed, int iters, bool do_check,
 int main(int argc, char **argv)
 {
     int seed = 0, iters = 1;
-    bool do_check = true, verbose = false, run_test = false, run_compare = false;
+    bool do_check = true, verbose = false, run_test = false;
     std::string mode = "cip", sortopt = "kx", em_path = "ip_cache.bin";
 
     for (int i = 1; i < argc; i++)
@@ -429,15 +380,14 @@ int main(int argc, char **argv)
             verbose = true;
         else if (a == "--test")
             run_test = true;
-        else if (a == "--no-check")
-            do_check = false;
+        // Note: --no-check option removed; verification behavior is fixed.
         else if (a == "-h" || a == "--help")
         {
-            std::cout << "Usage: " << argv[0]
-                      << " [--mode=cip|cip-pr|cip-apr|cip-em|cip-emc] [--seed=N] [--iters=M] "
-                         "[--sort=std|kx]"
-                      << " [--verbose] [--no-check] [--test] [--compare] [--em=path]\n"
-                      << "  --em=path: External memory file path (default: ip_cache.bin)\n";
+                std::cout << "Usage: " << argv[0]
+                             << " [--mode=cip|cip-pr|cip-apr|cip-em] [--seed=N] [--iters=M] "
+                                 "[--sort=std|kx]"
+                             << " [--verbose] [--test] [--em=path]\n"
+                             << "  --em=path: External memory file path (default: ip_cache.bin)\n";
             return 0;
         }
     }
@@ -463,10 +413,6 @@ int main(int argc, char **argv)
     else if (mode == "cip-em")
     {
         return run_mode_em(seed, iters, do_check, verbose, sortopt, em_path);
-    }
-    else if (mode == "cip-emc")
-    {
-        return run_mode_emc(seed, iters, do_check, verbose, sortopt, em_path);
     }
     else
     {

@@ -12,14 +12,6 @@
 
 #include "zcash_blake.h"
 
-enum class SortAlgo
-{
-    STD,
-    KXSORT
-};
-extern SortAlgo g_sort_algo;
-extern bool g_verbose;
-
 
 /**
  * @brief Custom memory allocator for pre-allocated memory regions

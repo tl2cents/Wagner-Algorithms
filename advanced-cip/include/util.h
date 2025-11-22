@@ -70,6 +70,14 @@ inline void print_solution_indices(const char *label,
 }
 
 // ---------- L0 filling ----------
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "blake2bip.h"  // For 4-way Blake2b
+#ifdef __cplusplus
+}
+#endif
+
 template <typename Layer_Type>
 inline void fill_layer0(Layer_Type &L0, int seed)
 {
@@ -103,10 +111,21 @@ inline void fill_layer0(Layer_Type &L0, int seed)
     uint32_t i = 0;
     for (; i + 3 < HALF; i += 4)
     {
+#ifdef NBLAKES
+        // 4-way Blake2b: output 4 x 64 bytes, take first 50 bytes from each
+        uint8_t hashes[4 * 64];
+        blake2bx4_final(&H.mid_, hashes, i / 4);  // i/4 is block index
+        for (int lane = 0; lane < 4; ++lane)
+        {
+            const uint8_t *ph = hashes + lane * 64;
+            std::memcpy(out[lane], ph, ZcashEquihashHasher::OUT_LEN);  // Copy first 50 bytes
+        }
+#else
         H.hash_index(i + 0, out[0]);
         H.hash_index(i + 1, out[1]);
         H.hash_index(i + 2, out[2]);
         H.hash_index(i + 3, out[3]);
+#endif
 
         // Store 8 leaves (2 per index)
         for (int lane = 0; lane < 4; ++lane)

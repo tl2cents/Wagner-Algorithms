@@ -505,57 +505,6 @@ std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr)
     return solutions;
 }
 
-// Test function comparing all three algorithms (original main function)
-void test_compare_all_algorithms(int seed)
-{
-    std::vector<Solution> solutions1 = plain_cip_pr(seed);
-    check_zero_xor(seed, solutions1);
-    std::vector<Solution> solutions2 = advanced_cip_pr(seed);
-    check_zero_xor(seed, solutions2);
-    std::vector<Solution> solutions3 = plain_cip(seed);
-    check_zero_xor(seed, solutions3);
-
-    // sort all solutions for comparison
-    auto sort_solutions = [](std::vector<Solution> &sols)
-    {
-        for (auto &sol : sols)
-        {
-            std::sort(sol.begin(), sol.end());
-        }
-        std::sort(sols.begin(), sols.end());
-    };
-    sort_solutions(solutions1);
-    sort_solutions(solutions2);
-    sort_solutions(solutions3);
-
-    // compare solutions
-    if (solutions1.size() != solutions2.size() || solutions1.size() != solutions3.size())
-    {
-        std::cout << "Mismatch in number of solutions: " << solutions1.size() << " vs " << solutions2.size() << " vs " << solutions3.size() << std::endl;
-    }
-    else
-    {
-        bool all_match = true;
-        for (size_t i = 0; i < solutions1.size(); ++i)
-        {
-            if (solutions1[i] != solutions2[i])
-            {
-                all_match = false;
-                std::cout << "Mismatch in solution " << i << std::endl;
-            }
-            if (solutions1[i] != solutions3[i])
-            {
-                all_match = false;
-                std::cout << "Mismatch in solution " << i << std::endl;
-            }
-        }
-        if (all_match)
-        {
-            std::cout << "All solutions match between plain and advanced algorithms." << std::endl;
-        }
-    }
-}
-
 /**
  * @brief CIP with External Memory (CIP-EM) - stores IP layers to disk for minimal memory usage
  *

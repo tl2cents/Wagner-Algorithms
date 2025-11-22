@@ -135,18 +135,27 @@ inline Item_IP make_ip_pair(const SrcWithIdx &a, const SrcWithIdx &b)
     return ip;
 }
 
+// template <typename ItemType>
+// inline bool is_zero_item(const ItemType &item)
+// {
+//     // check only 40 bits (5 bytes) of XOR field
+//     for (size_t i = 0; i < 5; ++i)
+//     {
+//         if (item.XOR[i] != 0)
+//         {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
 template <typename ItemType>
-inline bool is_zero_item(const ItemType &item)
+inline bool is_zero_item(const ItemType &item) noexcept
 {
-    // check only 40 bits (5 bytes) of XOR field
-    for (size_t i = 0; i < 5; ++i)
-    {
-        if (item.XOR[i] != 0)
-        {
-            return false;
-        }
-    }
-    return true;
+    uint32_t lo32 = 0;
+    std::memcpy(&lo32, item.XOR, sizeof(lo32));
+    if (lo32 != 0)
+        return false;
+    return item.XOR[4] == 0;
 }
 
 template <typename T>

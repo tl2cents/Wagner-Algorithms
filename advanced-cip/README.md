@@ -1,14 +1,35 @@
+# Inplace Merge Benchmark
+
+To reproduce the results in *Table 5* from the paper, run:
+
+```
+./run_merge.sh 0 2000 std
+./run_merge.sh 0 2000 kx
+```
+
+Benchmark results for the first merge in `Equihash(200,9)` using `kxsort` vs `std::sort` are as follows:
+
+| Metric | kx (Avg) | kx (Max) | std (Avg) | std (Max) |
+| :--- | :---: | :---: | :---: | :---: |
+| Sort time (s) | 0.0593 | 0.0651 | 0.1256 | 0.1358 |
+| Linear scan (s) | 0.0265 | 0.0329 | 0.0268 | 0.0333 |
+| Temp buffer (items) | 66.16 | 120 | 66.16 | 120 |
+| Peak USS (MB) | N/A | 51.55 | N/A | 51.59 |
+| Peak RSS (MB) | N/A | 53.00 | N/A | 53.25 |
+
+> The benchmarks were conducted on an Intel i7-13700K CPU with 64GB RAM running Ubuntu 22.04.5 LTS on WSL2 covering seeds from 0 to 1999. More details about the system configuration can be found in the next section.
+
+In [merge_in_place.py](./merge_in_place.py), we provided a Python implementation of in-place merge, along with many optimization insights. Note that for ease of implementation, our practical version uses a templated [kx-sort](https://github.com/voutcn/kxsort) with a fixed bucket size of 256. It is only about 2× faster than `std::sort`, which means there is still significant room for optimization. For more efficient sorting algorithms, please refer to the links included in [merge_in_place.py](./merge_in_place.py).
+
+
 # `Equihash(200,9)` CIP Proof-of-Concept Benchmark Results
 
 This document contains benchmark results for **post retrieval** and **external memory caching** implementations for `Equihash(200, 9)`, corresponding to *Table 6* in our paper.
-
-
 
 ---
 
 ## Benchmarks
 
-**Benchmarks conducted on: 2025-11-01**
 **System: Intel i7-13700K with 64GB RAM running Ubuntu 22.04.5 LTS on WSL2**
 
 ---
@@ -18,8 +39,6 @@ This document contains benchmark results for **post retrieval** and **external m
 * **CPU**: x86-64 processor with AVX2 support (required for BLAKE2b hashing)
 * **OS**: Linux (Ubuntu 20.04 LTS or later recommended), NOT tested on MacOS or Windows natively.
 * **Compiler**: GCC 9.0+ with C++20 support
-
-
 
 ###  Configuration
 
@@ -36,16 +55,32 @@ The benchmarks were executed using the script `./run.sh` with the following para
 ### Benchmark Results
 
 
+> Running with plain BLAKE2b:
+``` bash
+./run.sh --iters 2000 --seed 0
+```
+
 
 | Algorithm      | Sol/s | Peak RSS (kB) | Peak USS (kB) | Peak USS (MB) |
 | -------------- | ----- | ------------- | ------------- | ------------- |
-| CIP            | 2.05  | 162,304       | 159,604       | 155.86        |
-| CIP-PR         | 0.41  | 61,264        | 58,456        | 57.09         |
-| CIP-EM         | 1.21  | 61,408        | 58,748        | 57.37         |
-| CIP-APR        | 0.68  | 66,312        | 63,420        | 61.93         |
-| CIP-EMC        | 1.00  | 73,856        | 71,168        | 69.50         |
-| Tromp-Baseline | 8.94  | 150,272       | N/A           | N/A           |
+| CIP            | 2.12  | 162,304       | 159,560       | 155.82        |
+| CIP-PR         | 0.44  | 61,184        | 59,640        | 58.24         |
+| CIP-EM         | 1.93  | 61,440        | 60,080        | 58.67         |
+| CIP-APR        | 0.74  | 66,048        | 64,628        | 63.11         |
+| Tromp-Equi1    | 6.30  | 150,528       | 149,036       | 145.54        |
 
+
+> Running with 4-way BLAKE2b:
+``` bash
+./run.sh -x4 --iters 2000 --seed 0
+```
+| Algorithm      | Sol/s | Peak RSS (kB) | Peak USS (kB) | Peak USS (MB) |
+| -------------- | ----- | ------------- | ------------- | ------------- |
+| CIP            | 2.27  | 162,304       | 160,952       | 157.18        |
+| CIP-PR         | 0.51  | 61,056        | 59,660        | 58.26         |
+| CIP-EM         | 2.06  | 61,576        | 58,748        | 57.37         |
+| CIP-APR        | 0.88  | 66,048        | 64,568        | 63.05         |
+| Tromp-Equix41  | 9.01  | 150,400       | 147,700       | 144.24        |
 
 
 **Remarks**
@@ -53,11 +88,9 @@ The benchmarks were executed using the script `./run.sh` with the following para
 * **Sol/s**:  Solutions per second
 * **Peak RSS**: Peak Resident Set Size in kilobytes - total memory pages in RAM 
 * **Peak USS**: Peak Unique Set Size in kilobytes - memory exclusively used by the process, more accurate than RSS 
-* All benchmarks were conducted in **single-threaded mode** despite the 12-core CPU available
 * The BLAKE2b implementation in Tromp's original code was **slightly modified** based on [this issue comment](https://github.com/Raptor3um/raptoreum/issues/48#issuecomment-969125200) to ensure successful compilation. **Configuration**: $2^{10}$ buckets, 145MB allocated, 4-way BLAKE2b
-* System was running on WSL2, which may introduce some performance overhead compared to native Linux
-* Total of 2000 iterations across seed range 0-1999 ensured statistical significance of results
 
+> We note that the performance bottleneck of our current implementation lies in the templated sorting routine. As a result, the optimization of 4-way BLAKE2b provides only limited performance gains in our setting. In contrast, Tromp’s implementation employs a fully customized and highly optimized sorting algorithm, for which the 4-way BLAKE2b optimization yields a substantial improvement in benchmark performance.
 
 
 ## Detailed System Configuration
@@ -88,35 +121,26 @@ The benchmarks were executed using the script `./run.sh` with the following para
 ### Operating System
 
 * **OS**: Ubuntu 22.04.5 LTS (running on WSL2)
-* **Kernel**: Linux 6.6.87.2-microsoft-standard-WSL2
 * **Compiler**: GCC 15.1.0 with C++20 support
-
-
 
 ---
 
 ## How to Reproduce
 
-To reproduce these benchmarks on your system:
+To reproduce these benchmarks on your system. On Debian/Ubuntu you can install common packages with:
 
 ```bash
-./run.sh
+sudo apt update && sudo apt install -y build-essential cmake
 ```
 
-The script will automatically:
-1. Create a build directory if it doesn't exist
-2. Compile all implementations using CMake and GCC
-3. Run all benchmark tests (CIP, CIP-PR, CIP-EM, CIP-APR, CIP-EMC, Tromp-Baseline)
-4. Monitor peak USS (Unique Set Size) for accurate memory measurements
-5. Generate a formatted results table
+The 4-way BLAKE2b SIMD build (`-x4` / `equix41`) requires a CPU with AVX2 support and a compiler that can emit AVX2 code (use `-mavx2` or `-march=native`).
 
+```bash
+./run.sh (-x4) --iters 2000 --seed 0
+```
 
-
-Compile (if `cmake` not available):
+Plain compile (if `cmake` not available):
 
 ``` bash
 g++ -I./include -I./third_party/kxsort -I./third_party/blake2-avx2 src/apr_main.cpp src/apr_alg.cpp third_party/blake2-avx2/blake2bip.c third_party/blake/blake2b.cpp -o apr -std=c++17 -O3 -march=native -mavx2 -funroll-loops -Wall -Wextra -Wno-unused-variable
 ```
-
-
-

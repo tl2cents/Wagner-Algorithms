@@ -1,0 +1,50 @@
+$ ./run.sh -x4 --iters 2000 --seed 0
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  Equihash(200,9) Benchmark Suite (CIP)       ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+Iterations: 2000  Start Seed: 0  Binary: apr_x41
+Mode: 4-way BLAKE2b SIMD (AVX2 required)
+
+Running implementations...
+
+[1] CIP
+────────────────────────────────────────────
+mode=cip sort=kx iters=2000 seed_range=0-1999 single_run_time=0.84 peakRSS_kB=162304 total_sols=3804 Sol/s=2.27
+Peak USS: 160952 kB (157.18 MB)
+
+[2] CIP-PR
+────────────────────────────────────────────
+mode=cip-pr sort=kx iters=2000 seed_range=0-1999 single_run_time=3.69 peakRSS_kB=61056 total_sols=3804 Sol/s=0.51
+Peak USS: 59660 kB (58.26 MB)
+
+[3] CIP-EM
+────────────────────────────────────────────
+mode=cip-em sort=kx iters=2000 seed_range=0-1999 single_run_time=0.92 peakRSS_kB=61576 total_sols=3804 Sol/s=2.06
+Peak USS: 58748 kB (57.37 MB)
+
+[4] CIP-APR
+────────────────────────────────────────────
+mode=cip-apr sort=kx iters=2000 seed_range=0-1999 single_run_time=2.15 peakRSS_kB=66048 total_sols=3804 Sol/s=0.88
+Peak USS: 64568 kB (63.05 MB)
+
+[5] Tromp Baseline
+────────────────────────────────────────────
+Building Tromp baseline target equix41...
+3699 total solutions
+Time: 410.156838481s, Sol/s: 9.01
+Peak USS: 147700 kB (144.24 MB)
+
+Results Summary
+Algorithm                 Sol/s     PeakRSS(kB)     PeakUSS(kB)
+-------------------- ---------- --------------- ---------------
+CIP                        2.27          162304          160952
+CIP-PR                     0.51           61056           59660
+CIP-EM                     2.06           61576           58748
+CIP-APR                    0.88           66048           64568
+Tromp-Baseline             9.01          150400          147700
+
+Notes:
+  - 4-way mode employs 4-Way BLAKE2b (AVX2 Required).
+  - USS: Unique Set Size (private memory).
+  - RSS: Resident Set Size (total).
+Benchmark complete.

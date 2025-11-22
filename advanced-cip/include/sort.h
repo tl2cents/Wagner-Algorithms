@@ -5,8 +5,15 @@
 #include "layer.h"
 #include "kxsort.h"
 
-// Note: SortAlgo and g_sort_algo are defined in `layer.h` to avoid
-// duplicate definitions across headers. This file depends on that.
+enum class SortAlgo
+{
+    STD,
+    KXSORT
+};
+extern SortAlgo g_sort_algo;
+extern bool g_verbose;
+inline constexpr uint32_t K20_MASK = 0x000FFFFFu;
+inline constexpr uint64_t K40_MASK = 0xFFFFFFFFFFULL;
 
 // ============================================================================
 // Key Extraction Functions
@@ -24,9 +31,10 @@
  */
 template <typename T>
 inline uint32_t getKey20(const T& x) {
-    uint64_t t = 0;
-    std::memcpy(&t, x.XOR, std::min(sizeof(x.XOR), sizeof(t)));
-    return static_cast<uint32_t>(t & 0x000FFFFFul);
+    uint32_t t = 0;
+    // std::memcpy(&t, x.XOR, std::min(sizeof(x.XOR), sizeof(t)));
+    std::memcpy(&t, x.XOR, 4); // Read 4 bytes for efficiency
+    return t & K20_MASK;
 }
 
 /**
@@ -43,7 +51,7 @@ template <typename T>
 inline uint64_t getKey40(const T& x) {
     uint64_t t = 0;
     std::memcpy(&t, x.XOR, std::min(sizeof(x.XOR), sizeof(t)));
-    return (t & 0xFFFFFFFFFFull);
+    return (t & K40_MASK);
 }
 
 // ============================================================================
