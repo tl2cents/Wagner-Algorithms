@@ -29,7 +29,7 @@ All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`
 
 For all optimization techniques, we provide Python-based proof-of-concept implementations to validate their theoretical correctness. In the subdirectory [python-poc](./python-poc/), we include concrete estimators that compute optimal parameter choices for Wagner’s algorithm under various memory constraints and parameter settings.  For example, under the index-trimming technique, the optimal parameter choices are as follows.
 
-| (n,k)   | trimmed_length | peak_mem  | runtime      | switching_height1 | peak_mem1  | runtime1     | peak_layer1 | switching_height2 | peak_mem2  | runtime2     | peak_layer2 | activating_height |
+| (n,k)   | trimmed_length | peak_mem  | total_runtime      | switching_height1 | peak_mem1  | runtime1     | peak_layer1 | switching_height2 | peak_mem2  | runtime2     | peak_layer2 | activating_height |
 |----------|----------------|-----------|--------------|-------------------:|-----------:|--------------:|------------:|-------------------:|-----------:|--------------:|------------:|------------------:|
 | (96, 5)  | 1              | 2^23.09   | 2.30 * T0    | 2                  | 2^23.09    | 1.40 * T0    | 2           | 2                  | 2^23.04    | 0.90 * T0    | 2           | 2                 |
 | (128,7) | 1              | 2^23.58   | 3.15 * T0    | 3                  | 2^23.58    | 1.86 * T0    | 6           | 3                  | 2^23.09    | 1.29 * T0    | 2           | 3                 |
