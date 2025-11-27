@@ -49,8 +49,12 @@ More resluts are available in [python-poc](./python-poc/).
 
 ## Implementations
 
-Our implementation serves solely as a proof of concept and does not incorporate aggressive low-level optimizations. We also note that these optimizations may significantly impact the ASIC-resistance of existing blockchains that rely on $`\textsf{Equihash}`$. We therefore recommend that such blockchains reassess the memory bottlenecks of ASIC implementations across all $`\textsf{Equihash}`$ parameter settings. For the parameter setting \textsf{Equihash}$(200, 9)$, a subset of our optimization results is shown below (serving only as a proof of concept).
+Our implementation serves solely as a proof of concept and does not incorporate aggressive low-level optimizations. We also note that these optimizations may significantly impact the ASIC-resistance of existing blockchains that rely on $`\textsf{Equihash}`$. We therefore recommend that such blockchains reassess the memory bottlenecks of ASIC implementations across all $`\textsf{Equihash}`$ parameter settings. 
 
+
+### Equihash(200,9) Quick Benchmark
+
+For the parameter setting \textsf{Equihash}$(200, 9)$, a subset of our optimization results is shown below (serving only as a proof of concept).
 
 | Algorithm      | Sol/s | Peak RSS (kB) | Peak USS (kB) | Peak USS (MB) |
 | -------------- | ----- | ------------- | ------------- | ------------- |
@@ -61,4 +65,19 @@ Our implementation serves solely as a proof of concept and does not incorporate 
 | Tromp-Equix41  | 9.01  | 150,400       | 147,700       | 144.24        |
 
 
-> The current implementations of the sorting algorithm and the linear-scan procedure still have substantial room for optimization, which explains the noticeable performance gap between the standard $\textsf{CIP}$ implementation and Tromp’s implementation. Further details can be found in the directory [advanced-cip](./advanced-cip/).
+> The current implementations of the sorting algorithm and the linear-scan procedure still have substantial room for optimization, which explains the noticeable performance gap between the standard $\textsf{CIP}$ implementation and Tromp’s implementation (CIP). Further details can be found in the directory [advanced-cip](./advanced-cip/).
+
+For `Equihash(144, 5)`, our implementations seems to
+
+### Equihash(144,5) Quick Benchmark
+
+For the parameter setting \textsf{Equihash}$(144, 5)$, a subset of our optimization results is shown below (serving only as a proof of concept). Our implementations outperform Tromp's baseline implementation (CIP) in both time and memory usage.
+
+| Algorithm      | Sol/s | Avg single run (s) | Total solutions | Peak RSS (kB) | Peak USS (kB) |
+| -------------- | -----:| ------------------: | ---------------:| -------------:| -------------:|
+| CIP            | 0.20  | 10.15              | 198             | 1774464       | 1772900       |
+| CIP-PR         | 0.06  | 31.81              | 198             | 724480        | 722892        |
+| CIP-EM         | 0.18  | 10.98              | 198             | 725092        | 723440        |
+| Tromp-Eq14451  | 0.19  | 9.76               | 190             | 2633344       | 2631388       |
+
+> Notes: "Avg single run (s)" is the average per-iteration runtime reported by the benchmark (for Tromp the total time was divided by 100 iterations to obtain the per-run average).
