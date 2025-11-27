@@ -67,11 +67,10 @@ For the parameter setting \textsf{Equihash}$(200, 9)$, a subset of our optimizat
 
 > The current implementations of the sorting algorithm and the linear-scan procedure still have substantial room for optimization, which explains the noticeable performance gap between the standard $\textsf{CIP}$ implementation and Tromp’s implementation (CIP). Further details can be found in the directory [advanced-cip](./advanced-cip/).
 
-For `Equihash(144, 5)`, our implementations seems to
 
 ### Equihash(144,5) Quick Benchmark
 
-For the parameter setting \textsf{Equihash}$(144, 5)$, a subset of our optimization results is shown below (serving only as a proof of concept). Our implementations outperform Tromp's baseline implementation (CIP) in both time and memory usage.
+For the parameter setting $`\textsf{Equihash}(144, 5)`$, a subset of our optimization results is shown below (serving only as a proof of concept). Our implementations outperform Tromp's baseline implementation (CIP) in both time and memory usage.
 
 | Algorithm      | Sol/s | Avg single run (s) | Total solutions | Peak RSS (kB) | Peak USS (kB) |
 | -------------- | -----:| ------------------: | ---------------:| -------------:| -------------:|
