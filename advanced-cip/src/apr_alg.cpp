@@ -63,24 +63,24 @@ size_t calc_apr_mem_bytes(int switch_h)
     if (sh > 8)
         sh = 8;
 
-    // Simulate forward pass: start at indexed layer `sh`, then for each merge
-    // from `sh`..7 we store one more IP and advance one indexed layer.
-    const size_t ip_bytes_per_item = sizeof(Item_IP);
+    // Manual per-height sizing, mirroring the old APR budgeting:
+    // - h=0: plain CIP (items + IP1..IP8)
+    // - h=8: pure PR (only item buffer for recover_IP)
+    // - h in [1..7]: peak occurs with the top indexed layer at height 7 plus
+    //   all stored IPs (IP_{h+1}..IP8), i.e., (8-h) IP arrays.
     size_t peak_bytes = 0;
-    size_t stored_ips = 0;
-    size_t cur_idx_bytes = idx_size_for_layer(sh == 0 ? 0 : sh);
-
-    for (int lvl = sh; lvl <= 7; ++lvl)
+    if (sh == 0)
     {
-        // before producing IP_{lvl+1}
-        size_t mem_before = (cur_idx_bytes + stored_ips * ip_bytes_per_item) * MAX_LIST_SIZE;
-        peak_bytes = std::max(peak_bytes, mem_before);
-
-        // after producing IP_{lvl+1}
-        stored_ips += 1;
-        cur_idx_bytes = idx_size_for_layer(lvl + 1);
-        size_t mem_after = (cur_idx_bytes + stored_ips * ip_bytes_per_item) * MAX_LIST_SIZE;
-        peak_bytes = std::max(peak_bytes, mem_after);
+        peak_bytes = MAX_CIP_BYTES;
+    }
+    else if (sh == 8)
+    {
+        peak_bytes = MAX_ITEM_MEM_BYTES;
+    }
+    else
+    {
+        // Approximate with Layer7_IDX + (8 - h) IP arrays.
+        peak_bytes = MAX_LIST_SIZE * sizeof(Item7_IDX) + static_cast<size_t>(8 - sh) * MAX_IP_MEM_BYTES;
     }
 
     // Keep CIP-PR safety margin so recover_IP (which uses indexed layers) is always safe.
