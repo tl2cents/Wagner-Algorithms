@@ -63,15 +63,14 @@ size_t calc_apr_mem_bytes(int switch_h)
     if (sh > 8)
         sh = 8;
 
-    // Manual per-height sizing, mirroring the old APR budgeting:
-    // - h=0: plain CIP (items + IP1..IP8)
-    // - h=8: pure PR (only item buffer for recover_IP)
-    // - h in [1..7]: peak occurs with the top indexed layer at height 7 plus
-    //   all stored IPs (IP_{h+1}..IP8), i.e., (8-h) IP arrays.
+    // Advanced CIP at switching height h, peak mem ~ L_{k-2} + IP_{k-1}..IP_{h+1}
+    // For k=9, L_{k-2} = L7_IDX and there are (8 - h) IP arrays stored.
+    // Special cases:
+    //   h=0 => plain CIP (items + 8 IP arrays)
+    //   h=8 => pure PR  (only item buffer for recover_IP)
     size_t peak_bytes = 0;
     if (sh == 0)
     {
-        // Plain CIP: items + IP1..IP8
         peak_bytes = MAX_ITEM_MEM_BYTES + 8 * MAX_IP_MEM_BYTES;
     }
     else if (sh == 8)
@@ -80,7 +79,6 @@ size_t calc_apr_mem_bytes(int switch_h)
     }
     else
     {
-        // Approximate with Layer7_IDX + (8 - h) IP arrays.
         peak_bytes = MAX_LIST_SIZE * sizeof(Item7_IDX) + static_cast<size_t>(8 - sh) * MAX_IP_MEM_BYTES;
     }
 
