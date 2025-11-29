@@ -152,6 +152,7 @@ run_and_monitor cip-pr -- ./build/${MAIN_BIN} --mode=cip-pr --iters=$ITERS --see
 
 echo ""; step "3" "CIP-EM"
 run_and_monitor cip-em -- ./build/${MAIN_BIN} --mode=cip-em --iters=$ITERS --seed=$SEED --em=${EM_FILE}
+rm -f "${EM_FILE}"
 
 if $HAS_CIP_APR; then
   echo ""; step "4" "CIP-APR"

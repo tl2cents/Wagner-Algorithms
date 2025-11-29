@@ -1,4 +1,7 @@
 #pragma once
+#define MOVE_BOUND 2048 // minimum number of items to move in one batch during in-place merge
+#define MAX_TMP_SIZE 2500 // maximum pre-allocated temporary buffer size during in-place merge
+#define GROUP_BOUND 512 // maximum group size during in-place merge
 
 #include "eq200_9/equihash_200_9.h"
 #include "core/merge.h"
@@ -157,7 +160,7 @@ inline void merge8_ip_inplace(Layer8_IDX &s, Layer9_IDX &d, Layer_IP &ip)
                              merge_item8_IDX, sort40<Item8_IDX>, false,
                              uint64_t, &getKey40<Item8_IDX>,
                              static_cast<bool (*)(const Item9_IDX &)>(nullptr),
-                             &make_ip_pair<Item8_IDX, Item_IP>>(s, d, ip);
+                             &make_ip_pair<Item8_IDX, Item_IP>, true>(s, d, ip);
 }
 
 inline void merge0_inplace(Layer0 &s, Layer1 &d)
@@ -279,7 +282,7 @@ inline void merge8_inplace_for_ip(Layer8_IDX &s, Layer_IP &d)
                                  merge_item8_IDX, sort40<Item8_IDX>, false,
                                  uint64_t, &getKey40<Item8_IDX>,
                                  static_cast<bool (*)(const Item9_IDX &)>(nullptr),
-                                 &make_ip_pair<Item8_IDX, Item_IP>>(s, d);
+                                 &make_ip_pair<Item8_IDX, Item_IP>, true>(s, d);
 }
 
 inline void merge0_em_ip_inplace(Layer0_IDX &s, Layer1_IDX &d,
@@ -361,5 +364,5 @@ inline void merge8_em_ip_inplace(Layer8_IDX &s, Layer9_IDX &d,
                                 merge_item8_IDX, sort40<Item8_IDX>, false,
                                 uint64_t, &getKey40<Item8_IDX>,
                                 static_cast<bool (*)(const Item9_IDX &)>(nullptr),
-                                &make_ip_pair<Item8_IDX, Item_IP>>(s, d, w);
+                                &make_ip_pair<Item8_IDX, Item_IP>, 65536, 128, true>(s, d, w);
 }

@@ -186,21 +186,49 @@ template <typename ItemT>
 inline void set_index(ItemT &item, size_t v)
 {
     constexpr size_t kBytes = sizeof(((ItemT *)nullptr)->index);
-    for (size_t i = 0; i < kBytes; ++i)
+    if constexpr (kBytes == 4)
     {
-        item.index[i] = static_cast<uint8_t>((v >> (8 * i)) & 0xFF);
+        uint32_t v32 = static_cast<uint32_t>(v);
+        std::memcpy(item.index, &v32, 4);
+    }
+    else if constexpr (kBytes == 8)
+    {
+        uint64_t v64 = static_cast<uint64_t>(v);
+        std::memcpy(item.index, &v64, 8);
+    }
+    else
+    {
+        for (size_t i = 0; i < kBytes; ++i)
+        {
+            item.index[i] = static_cast<uint8_t>((v >> (8 * i)) & 0xFF);
+        }
     }
 }
 
 template <std::size_t N>
 inline size_t get_index_from_bytes(const uint8_t (&idx)[N])
 {
-    size_t value = 0;
-    for (size_t i = 0; i < N; ++i)
+    if constexpr (N == 4)
     {
-        value |= static_cast<size_t>(idx[i]) << (8 * i);
+        uint32_t v32;
+        std::memcpy(&v32, idx, 4);
+        return v32;
     }
-    return value;
+    else if constexpr (N == 8)
+    {
+        uint64_t v64;
+        std::memcpy(&v64, idx, 8);
+        return static_cast<size_t>(v64);
+    }
+    else
+    {
+        size_t value = 0;
+        for (size_t i = 0; i < N; ++i)
+        {
+            value |= static_cast<size_t>(idx[i]) << (8 * i);
+        }
+        return value;
+    }
 }
 
 template <typename ItemT>

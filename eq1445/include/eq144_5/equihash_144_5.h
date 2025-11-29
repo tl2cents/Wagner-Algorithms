@@ -23,7 +23,7 @@ struct EquihashParams_144_5
     static constexpr std::uint32_t kLeafCountFull = kLeafCountHalf * 2u;         // 2^25
 
     // 35000000 slightly greater than 2^25 = 33554432
-    static constexpr std::size_t kMaxListSize = 35000000;
+    static constexpr std::size_t kMaxListSize = 34000000;
     static constexpr std::size_t kInitialListSize = kLeafCountFull;
 };
 } // namespace equihash

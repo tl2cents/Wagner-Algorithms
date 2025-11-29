@@ -346,7 +346,7 @@ static inline size_t check_zero_xor(
         const auto &chain = solutions[ci];
         if (is_trivial_solution(chain))
         {
-            ++trivial;
+            /* Lines 349-350 omitted */
             continue;
         }
 

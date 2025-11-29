@@ -40,11 +40,20 @@ inline auto get_key_bits(const Item &item)
 {
     using KeyType = std::conditional_t<(KeyBits <= 32), uint32_t, uint64_t>;
     KeyType value = 0;
-    constexpr std::size_t bytes_needed = (KeyBits + 7) / 8;
-    constexpr std::size_t bytes_to_copy = bytes_needed < sizeof(item.XOR)
-                                              ? bytes_needed
-                                              : sizeof(item.XOR);
-    std::memcpy(&value, item.XOR, bytes_to_copy);
+    
+    if constexpr (sizeof(item.XOR) >= sizeof(KeyType))
+    {
+        std::memcpy(&value, item.XOR, sizeof(KeyType));
+    }
+    else
+    {
+        constexpr std::size_t bytes_needed = (KeyBits + 7) / 8;
+        constexpr std::size_t bytes_to_copy = bytes_needed < sizeof(item.XOR)
+                                                  ? bytes_needed
+                                                  : sizeof(item.XOR);
+        std::memcpy(&value, item.XOR, bytes_to_copy);
+    }
+
     if constexpr (KeyBits == 0)
     {
         return KeyType{0};

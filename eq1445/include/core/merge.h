@@ -11,10 +11,21 @@
 #include "core/equihash_base.h"
 
 // Merge tuning knobs (can be overridden per benchmark/test when needed)
-#define MOVE_BOUND 2048
-#define TMP_SIZE 1024
-#define GROUP_BOUND 256
+#ifndef MOVE_BOUND
+#define MOVE_BOUND 2048 // minimum number of items to move in one batch during in-place merge
+#endif
 
+#ifndef MAX_TMP_SIZE
+#define MAX_TMP_SIZE 2500 // maximum pre-allocated temporary buffer size during in-place merge
+#endif
+
+#ifndef GROUP_BOUND
+#define GROUP_BOUND 512 // maximum group size during in-place merge
+#endif
+
+// MAX_TMP_SIZE > MOVE_BOUND
+// usually set MAX_TMP_SIZE slightly greater than MOVE_BOUND + GROUP_BOUND
+static_assert(MAX_TMP_SIZE > MOVE_BOUND, "MAX_TMP_SIZE must be greater than MOVE_BOUND");
 
 // ------------------ XOR shift & merge helpers ------------------
 template <size_t NI, size_t NO>
@@ -71,10 +82,11 @@ inline ItemIP make_ip_pair(const SrcWithIdx &a, const SrcWithIdx &b)
     return ip;
 }
 
-template <typename ItemType>
+template <typename ItemType, const size_t nbytes = 5>
 inline bool is_zero_item(const ItemType &item) noexcept
 {
-    for (std::size_t i = 0; i < ItemXorSize<ItemType>; ++i)
+    constexpr std::size_t check_len = (ItemXorSize<ItemType> < nbytes) ? ItemXorSize<ItemType> : nbytes;
+    for (std::size_t i = 0; i < check_len; ++i)
     {
         if (item.XOR[i] != 0)
         {
@@ -132,7 +144,7 @@ template <typename SrcItem, typename DstItem, typename IPItem,
           typename KeyType, KeyType (*key_func)(const SrcItem &),
           bool (*is_zero_func)(const DstItem &) = nullptr,
           IPItem (*make_ip_func)(const SrcItem &, const SrcItem &) = nullptr,
-          const size_t move_bound = MOVE_BOUND, const size_t max_tmp_size = TMP_SIZE>
+          bool is_last = false>
 inline void merge_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
                                      LayerVec<DstItem> &dst_arr,
                                      LayerVec<IPItem> &ip_arr)
@@ -156,8 +168,8 @@ inline void merge_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
     std::vector<DstItem> tmp_items;
     std::vector<IPItem> tmp_ips;
     std::vector<uint8_t> skip_buf;
-    tmp_items.reserve(max_tmp_size);
-    tmp_ips.reserve(max_tmp_size);
+    tmp_items.reserve(MAX_TMP_SIZE);
+    tmp_ips.reserve(MAX_TMP_SIZE);
     skip_buf.reserve(GROUP_BOUND);
     size_t free_bytes = 0;
     size_t i = 0;
@@ -196,10 +208,10 @@ inline void merge_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
         }
         else
         {
-            if (group_size > 3)
+            if (is_last && group_size > 3)
             {
                 continue;
-            } // last hop: skip large groups since they are trivial solutions with overwhelming prob.
+            } // last hop: skip large groups only for final merge
             for (size_t j1 = group_start; j1 < group_end; ++j1)
                 for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
                 {
@@ -216,7 +228,7 @@ inline void merge_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
         free_bytes += group_size * sz_src;
         const size_t can_dst = free_bytes / sz_dst;
         const size_t to_move = std::min<size_t>({tmp_size, can_dst, avail_dst});
-        if (to_move >= move_bound) // trade-off: to avoid too-frequent small moves, we only move when we have enough items.
+        if (to_move >= MOVE_BOUND) // trade-off: to avoid too-frequent small moves, we only move when we have enough items.
         {
             drain_vectors(tmp_items, dst_arr, to_move);
             drain_vectors(tmp_ips, ip_arr, to_move);
@@ -240,7 +252,7 @@ template <typename SrcItem, typename DstItem,
           void (*sort_func)(LayerVec<SrcItem> &), bool discard_zero,
           typename KeyType, KeyType (*key_func)(const SrcItem &),
           bool (*is_zero_func)(const DstItem &) = nullptr,
-          const size_t move_bound = MOVE_BOUND, const size_t max_tmp_size = TMP_SIZE>
+          bool is_last = false>
 inline void merge_inplace_generic(LayerVec<SrcItem> &src_arr,
                                   LayerVec<DstItem> &dst_arr)
 {
@@ -254,9 +266,9 @@ inline void merge_inplace_generic(LayerVec<SrcItem> &src_arr,
     // const size_t sz_src = sizeof(SrcItem), sz_dst = std::max(sizeof(DstItem), sizeof(IPItem));
     const size_t sz_src = sizeof(SrcItem), sz_dst = sizeof(DstItem);
 
-    // FIFO buffer for temporary items
     std::vector<DstItem> tmp_items;
     std::vector<uint8_t> skip_buf;
+    tmp_items.reserve(MAX_TMP_SIZE);
     skip_buf.reserve(GROUP_BOUND);
     size_t free_bytes = 0;
     size_t avail_dst = dst_arr.capacity() - dst_arr.size();
@@ -295,10 +307,10 @@ inline void merge_inplace_generic(LayerVec<SrcItem> &src_arr,
         }
         else
         {
-            if (group_size > 3)
+            if (is_last && group_size > 3)
             {
                 continue;
-            } // last hop: skip large groups since they are trivial solutions with overwhelming prob.
+            } // last hop: skip large groups only for final merge
             for (size_t j1 = group_start; j1 < group_end; ++j1)
                 for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
                 {
@@ -314,7 +326,7 @@ inline void merge_inplace_generic(LayerVec<SrcItem> &src_arr,
         free_bytes += group_size * sz_src;
         const size_t can_dst = free_bytes / sz_dst;
         const size_t to_move = std::min<size_t>({tmp_size, can_dst, avail_dst});
-        if (to_move >= move_bound) // trade-off: to avoid too-frequent small moves, we only move when we have enough items.
+        if (to_move >= MOVE_BOUND) // trade-off: to avoid too-frequent small moves, we only move when we have enough items.
         {
             drain_vectors(tmp_items, dst_arr, to_move);
             free_bytes -= to_move * sz_dst;
@@ -338,7 +350,7 @@ template <typename SrcItem, typename DstItem, typename IPItem,
           typename KeyType, KeyType (*key_func)(const SrcItem &),
           bool (*is_zero_func)(const DstItem &) = nullptr,
           IPItem (*make_ip_func)(const SrcItem &, const SrcItem &) = nullptr,
-          const size_t move_bound = MOVE_BOUND, const size_t max_tmp_size = TMP_SIZE>
+          bool is_last = false>
 inline void merge_inplace_for_ip_generic(LayerVec<SrcItem> &src_arr,
                                          LayerVec<IPItem> &dst_arr)
 {
@@ -357,7 +369,7 @@ inline void merge_inplace_for_ip_generic(LayerVec<SrcItem> &src_arr,
     // FIFO buffer for temporary IP items
     std::vector<IPItem> tmp_items;
     std::vector<uint8_t> skip_buf;
-    tmp_items.reserve(max_tmp_size);
+    tmp_items.reserve(MAX_TMP_SIZE);
     skip_buf.reserve(GROUP_BOUND);
 
     size_t free_bytes = 0;
@@ -397,10 +409,10 @@ inline void merge_inplace_for_ip_generic(LayerVec<SrcItem> &src_arr,
         }
         else
         {
-            if (group_size > 3)
+            if (is_last && group_size > 3)
             {
                 continue;
-            } // last hop: skip large groups since they are trivial solutions with overwhelming prob.
+            } // last hop: skip large groups only for final merge
             for (size_t j1 = group_start; j1 < group_end; ++j1)
                 for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
                 {
@@ -416,7 +428,7 @@ inline void merge_inplace_for_ip_generic(LayerVec<SrcItem> &src_arr,
         free_bytes += group_size * sz_src;
         const size_t can_dst = free_bytes / sz_dst;
         const size_t to_move = std::min<size_t>({tmp_size, can_dst, avail_dst});
-        if (to_move >= move_bound) // trade-off: to avoid too-frequent small moves, we only move when we have enough items.
+        if (to_move >= MOVE_BOUND) // trade-off: to avoid too-frequent small moves, we only move when we have enough items.
         {
             drain_vectors(tmp_items, dst_arr, to_move);
             free_bytes -= to_move * sz_dst;
@@ -562,8 +574,8 @@ template <typename SrcItem, typename DstItem, typename IPItem,
           typename KeyType, KeyType (*key_func)(const SrcItem &),
           bool (*is_zero_func)(const DstItem &) = nullptr,
           IPItem (*make_ip_func)(const SrcItem &, const SrcItem &) = nullptr,
-          const size_t move_bound = MOVE_BOUND, const size_t max_tmp_size = TMP_SIZE,
-          const size_t IP_BATCH_SIZE = 65536, const size_t DELTA_SIZE = 128>
+          const size_t IP_BATCH_SIZE = 65536, const size_t DELTA_SIZE = 128,
+          bool is_last = false>
 inline void merge_em_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
                                         LayerVec<DstItem> &dst_arr,
                                         IPDiskWriter<IPItem> &ip_writer)
@@ -584,7 +596,7 @@ inline void merge_em_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
     std::vector<DstItem> tmp_items;
     std::vector<IPItem> tmp_ips;
     std::vector<uint8_t> skip_buf;
-    tmp_items.reserve(max_tmp_size);
+    tmp_items.reserve(MAX_TMP_SIZE);
     tmp_ips.reserve(IP_BATCH_SIZE + DELTA_SIZE);
     skip_buf.reserve(GROUP_BOUND);
 
@@ -633,10 +645,10 @@ inline void merge_em_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
         }
         else
         {
-            if (group_size > 3)
+            if (is_last && group_size > 3)
             {
                 continue;
-            } // last hop: skip large groups since they are trivial solutions with overwhelming prob.
+            } // last hop: skip large groups only for final merge
             for (size_t j1 = group_start; j1 < group_end; ++j1)
                 for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
                 {
@@ -657,7 +669,7 @@ inline void merge_em_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
         free_bytes += group_size * sz_src;
         const size_t can_dst = free_bytes / sz_dst;
         const size_t to_move = std::min<size_t>({tmp_size, can_dst, avail_dst});
-        if (tmp_size >= move_bound) // trade-off: to avoid too-frequent small moves, we only move when we have enough items.
+        if (tmp_size >= MOVE_BOUND) // trade-off: to avoid too-frequent small moves, we only move when we have enough items.
         {
 
             // const size_t avail_dst = dst_arr.capacity() - dst_arr.size();
