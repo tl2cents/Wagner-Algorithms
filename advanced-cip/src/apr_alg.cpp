@@ -493,10 +493,11 @@ std::vector<Solution> advanced_cip_pr(int seed, int switch_h, uint8_t *base)
 
     // IP storage (only store layers above the switching height)
     const int stored_ip_cnt = 8 - switch_h;
-    std::vector<Layer_IP> stored_ips(stored_ip_cnt);
+    std::vector<Layer_IP> stored_ips;
+    stored_ips.reserve(stored_ip_cnt);
     for (int i = 0; i < stored_ip_cnt; ++i)
     {
-        stored_ips[i] = init_layer<Item_IP>(base_end - static_cast<size_t>(i + 1) * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        stored_ips.push_back(init_layer<Item_IP>(base_end - static_cast<size_t>(i + 1) * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES));
     }
     auto get_stored_ip = [&](int ip_level) -> Layer_IP & {
         // ip_level in [switch_h+1, 8]
