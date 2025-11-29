@@ -332,17 +332,12 @@ std::vector<Solution> cip_em(int seed, const std::string &em_path, uint8_t *base
 uint64_t advanced_cip_pr_peak_memory(int h)
 {
     uint64_t k = EquihashParams::K;
-    if (h == 0)
-    {
-        // plain_cip: stores all IP1-IP4 in separate regions
-        return MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES * (k - 1);
-    }
-    else if (h >= static_cast<int>(k) - 1)
+    if (h >= static_cast<int>(k) - 1)
     {
         // plain_cip_pr: recovers all IP layers on-demand, no storage needed
         return MAX_ITEM_MEM_BYTES;
     }
-    // For hybrid switching_height h (1 to K-2):
+    // For switching_height h (0 to K-2):
     // Layer buffer size: sufficient for Layer3_IDX (the largest indexed layer used)
     // IP storage: (K-1-h) arrays from buffer end
     // Lower bound: MAX_ITEM_MEM_BYTES ensures recover_IP() has enough space
@@ -387,8 +382,7 @@ uint64_t advanced_cip_pr_peak_memory(int h)
  *    - Ensures recover_IP() has sufficient space (may use Layer0_IDX for h=1 recovery)
  *
  * @tparam switching_height The layer at which to start tracking indices (0 to K-1)
- *   - 0: plain_cip (stores all IP1-IP4, max memory ~1.8GB)
- *   - 1-3: hybrid (memory/time tradeoff)
+ *   - 0-3: hybrid (memory/time tradeoff)
  *   - 4: plain_cip_pr (recovers all, min memory ~750MB, max time)
  */
 template <int switching_height>
@@ -397,14 +391,91 @@ std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr)
     constexpr int K = EquihashParams::K; // K = 5
     static_assert(switching_height >= 0 && switching_height < K, "Invalid switching height");
 
-    // Handle edge cases: delegate to existing implementations
-    if constexpr (switching_height == 0)
-    {
-        return plain_cip(seed, base);
-    }
-    else if constexpr (switching_height == K - 1)
+    // Handle edge case: full post-retrieval mode
+    if constexpr (switching_height == K - 1)
     {
         return plain_cip_pr(seed, base);
+    }
+    else if constexpr (switching_height == 0)
+    {
+        // switching_height = 0: store IP1, IP2, IP3, IP4 (4 layers), no recovery needed
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        // IP storage allocation (backwards from buffer end):
+        // IP1 at rightmost, IP2, IP3, IP4 progressively leftward
+        Layer_IP IP1 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP2 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP3 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP4 = init_layer<Item_IP>(base_end - 4 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP5 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES); // IP5 reuses layer buffer at front
+
+        // Forward pass: Start indexed from layer 0
+        Layer0_IDX L0_IDX = init_layer<Item0_IDX>(base, MAX_LIST_SIZE * sizeof(Item0_IDX));
+        fill_layer0(L0_IDX, seed);
+        set_index_batch(L0_IDX);
+
+        // Forward pass with IP storage
+        Layer1_IDX L1_IDX = init_layer<Item1_IDX>(base, MAX_LIST_SIZE * sizeof(Item1_IDX));
+        merge0_ip_inplace(L0_IDX, L1_IDX, IP1);
+        set_index_batch(L1_IDX);
+        clear_vec(L0_IDX);
+
+        Layer2_IDX L2_IDX = init_layer<Item2_IDX>(base, MAX_LIST_SIZE * sizeof(Item2_IDX));
+        merge1_ip_inplace(L1_IDX, L2_IDX, IP2);
+        set_index_batch(L2_IDX);
+        clear_vec(L1_IDX);
+
+        Layer3_IDX L3_IDX = init_layer<Item3_IDX>(base, MAX_LIST_SIZE * sizeof(Item3_IDX));
+        merge2_ip_inplace(L2_IDX, L3_IDX, IP3);
+        set_index_batch(L3_IDX);
+        clear_vec(L2_IDX);
+
+        Layer4_IDX L4_IDX = init_layer<Item4_IDX>(base, MAX_LIST_SIZE * sizeof(Item4_IDX));
+        merge3_ip_inplace(L3_IDX, L4_IDX, IP4);
+        set_index_batch(L4_IDX);
+        clear_vec(L3_IDX);
+
+        merge4_inplace_for_ip(L4_IDX, IP5);
+        clear_vec(L4_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 5 IP size: " << IP5.size() << std::endl;
+            std::cout << "Layer 4 IP size: " << IP4.size() << std::endl;
+            std::cout << "Layer 3 IP size: " << IP3.size() << std::endl;
+            std::cout << "Layer 2 IP size: " << IP2.size() << std::endl;
+            std::cout << "Layer 1 IP size: " << IP1.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP5.empty())
+        {
+            expand_solutions(solutions, IP5);
+            expand_solutions(solutions, IP4);
+            expand_solutions(solutions, IP3);
+            expand_solutions(solutions, IP2);
+            expand_solutions(solutions, IP1);
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
     }
     else if constexpr (switching_height == 1)
     {
