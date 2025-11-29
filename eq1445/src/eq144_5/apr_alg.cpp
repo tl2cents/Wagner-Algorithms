@@ -424,12 +424,12 @@ std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr)
         uint8_t *base_end = base + total_mem;
 
         // IP storage allocation (backwards from buffer end):
-        // First generated IP2 at rightmost: base_end - 3*MAX_IP_MEM_BYTES
+        // First generated IP2 at rightmost: base_end - 1*MAX_IP_MEM_BYTES
         // Then IP3 in middle: base_end - 2*MAX_IP_MEM_BYTES
-        // Last generated IP4 at leftmost: base_end - 1*MAX_IP_MEM_BYTES
-        Layer_IP IP2 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        // Last generated IP4 at leftmost: base_end - 3*MAX_IP_MEM_BYTES
+        Layer_IP IP2 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
         Layer_IP IP3 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
-        Layer_IP IP4 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP4 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
         Layer_IP IP5 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES); // IP5 reuses layer buffer at front
 
         // Forward pass Part 1: L0 -> L1 (non-indexed)
@@ -509,10 +509,10 @@ std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr)
         uint8_t *base_end = base + total_mem;
 
         // IP storage allocation (backwards from buffer end):
-        // First generated IP3 at rightmost: base_end - 2*MAX_IP_MEM_BYTES
-        // Last generated IP4 at leftmost: base_end - 1*MAX_IP_MEM_BYTES
-        Layer_IP IP3 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
-        Layer_IP IP4 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        // First generated IP3 at rightmost: base_end - 1*MAX_IP_MEM_BYTES
+        // Last generated IP4 at leftmost: base_end - 2*MAX_IP_MEM_BYTES
+        Layer_IP IP3 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP4 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
         Layer_IP IP5 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES); // IP5 reuses layer buffer at front
 
         // Forward pass Part 1: L0 -> L1 -> L2 (non-indexed)
