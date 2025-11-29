@@ -212,3 +212,39 @@ inline void merge3_em_ip_inplace(Layer3_IDX &s, Layer4_IDX &d,
                                 &is_zero_item<Item4_IDX>,
                                 &make_ip_pair<Item3_IDX, Item_IP>>(s, d, writer);
 }
+
+// Template wrappers for indexed access
+template<size_t I>
+inline void merge_inplace(Layer<I> &s, Layer<I+1> &d) {
+    if constexpr (I == 0) merge0_inplace(s, d);
+    else if constexpr (I == 1) merge1_inplace(s, d);
+    else if constexpr (I == 2) merge2_inplace(s, d);
+    else if constexpr (I == 3) merge3_inplace(s, d);
+    else if constexpr (I == 4) merge4_inplace(s, d);
+}
+
+template<size_t I>
+inline void merge_ip_inplace(LayerIDX<I> &s, LayerIDX<I+1> &d, Layer_IP &ip) {
+    if constexpr (I == 0) merge0_ip_inplace(s, d, ip);
+    else if constexpr (I == 1) merge1_ip_inplace(s, d, ip);
+    else if constexpr (I == 2) merge2_ip_inplace(s, d, ip);
+    else if constexpr (I == 3) merge3_ip_inplace(s, d, ip);
+    else if constexpr (I == 4) merge4_ip_inplace(s, d, ip);
+}
+
+template<size_t I>
+inline void merge_inplace_for_ip(LayerIDX<I> &s, Layer_IP &d) {
+    if constexpr (I == 0) merge0_inplace_for_ip(s, d);
+    else if constexpr (I == 1) merge1_inplace_for_ip(s, d);
+    else if constexpr (I == 2) merge2_inplace_for_ip(s, d);
+    else if constexpr (I == 3) merge3_inplace_for_ip(s, d);
+    else if constexpr (I == 4) merge4_inplace_for_ip(s, d);
+}
+
+template<size_t I>
+inline void merge_em_ip_inplace(LayerIDX<I> &s, LayerIDX<I+1> &d, EquihashIPDiskWriter &writer) {
+    if constexpr (I == 0) merge0_em_ip_inplace(s, d, writer);
+    else if constexpr (I == 1) merge1_em_ip_inplace(s, d, writer);
+    else if constexpr (I == 2) merge2_em_ip_inplace(s, d, writer);
+    else if constexpr (I == 3) merge3_em_ip_inplace(s, d, writer);
+}

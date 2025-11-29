@@ -197,7 +197,8 @@ if [ -n "$TROMP_TARGET" ]; then
     peak_uss=0; [ -f "$ussfile" ] && peak_uss=$(cat "$ussfile" 2>/dev/null || echo 0)
     peak_mb=$(awk -v v="$peak_uss" 'BEGIN{printf "%.2f", v/1024}')
     echo -e "${BLUE}Peak USS: ${peak_uss} kB (${peak_mb} MB)${NC}"
-    echo "mode=tromp-baseline total_sols=$TOTAL_SOLS time=$TIME Sol/s=$SOL_PER_SEC peakRSS_kB=$PEAK_RSS" >> "$TMPFILE"
+    if [ "$ITERS" -gt 0 ]; then AVG_TIME=$(echo "scale=2; $TIME / $ITERS" | bc); else AVG_TIME=0; fi
+    echo "mode=tromp-baseline total_sols=$TOTAL_SOLS time=$TIME single_run_time=$AVG_TIME Sol/s=$SOL_PER_SEC peakRSS_kB=$PEAK_RSS" >> "$TMPFILE"
     echo "mode=tromp-baseline peakUSS_kB=$peak_uss" >> "$TMPFILE"
     rm -f "$ussfile"
     else
@@ -209,12 +210,12 @@ if [ -n "$TROMP_TARGET" ]; then
 fi
 
 echo ""; echo -e "${GREEN}${BOLD}Results Summary${NC}"
-printf "%-20s %10s %15s %15s\n" "Algorithm" "Sol/s" "PeakRSS(kB)" "PeakUSS(kB)"
-printf "%-20s %10s %15s %15s\n" "--------------------" "----------" "---------------" "---------------"
+printf "%-20s %10s %12s %10s %15s %15s\n" "Algorithm" "Sol/s" "Time/Iter(s)" "TotalSols" "PeakRSS(kB)" "PeakUSS(kB)"
+printf "%-20s %10s %12s %10s %15s %15s\n" "--------------------" "----------" "------------" "----------" "---------------" "---------------"
 
 parse_mode() {
   local m="$1"; local name="$2";
-  grep "mode=${m} " "$TMPFILE" | awk -v label="$name" -F'[ =]' 'BEGIN{sols=0;rss=0} /mode='"$m"'/ && /Sol\/s/ {for(i=1;i<=NF;i++){if($i=="Sol/s") sols=$(i+1); if($i=="peakRSS_kB") rss=$(i+1)}} END{printf "%-20s %10.2f %15d", label, sols, rss}'
+  grep "mode=${m} " "$TMPFILE" | awk -v label="$name" -F'[ =]' 'BEGIN{sols=0;rss=0;time=0;total=0} /mode='"$m"'/ && /Sol\/s/ {for(i=1;i<=NF;i++){if($i=="Sol/s") sols=$(i+1); if($i=="peakRSS_kB") rss=$(i+1); if($i=="single_run_time") time=$(i+1); if($i=="total_sols") total=$(i+1)}} END{printf "%-20s %10.2f %12.2f %10d %15d", label, sols, time, total, rss}'
   local uss=$(grep "mode=${m} peakUSS_kB=" "$TMPFILE" | sed -E 's/.*peakUSS_kB=([0-9]+).*/\1/' | tail -1)
   [ -z "$uss" ] && uss=0; printf " %15d\n" "$uss"
 }

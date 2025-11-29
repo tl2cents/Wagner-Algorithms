@@ -66,3 +66,40 @@ using IPDiskManifest = equihash::IPDiskManifestT<Item_IP, 4>; // Stores IP1-IP4 
 
 inline constexpr std::size_t MAX_LIST_SIZE = EquihashParams::kMaxListSize;
 inline constexpr std::size_t INITIAL_LIST_SIZE = EquihashParams::kInitialListSize;
+
+// Template aliases for indexed access
+template<size_t I> struct ItemType;
+template<> struct ItemType<0> { using type = Item0; };
+template<> struct ItemType<1> { using type = Item1; };
+template<> struct ItemType<2> { using type = Item2; };
+template<> struct ItemType<3> { using type = Item3; };
+template<> struct ItemType<4> { using type = Item4; };
+template<> struct ItemType<5> { using type = Item5; };
+template<size_t I> using Item = typename ItemType<I>::type;
+
+template<size_t I> struct ItemIDXType;
+template<> struct ItemIDXType<0> { using type = Item0_IDX; };
+template<> struct ItemIDXType<1> { using type = Item1_IDX; };
+template<> struct ItemIDXType<2> { using type = Item2_IDX; };
+template<> struct ItemIDXType<3> { using type = Item3_IDX; };
+template<> struct ItemIDXType<4> { using type = Item4_IDX; };
+template<> struct ItemIDXType<5> { using type = Item5_IDX; };
+template<size_t I> using ItemIDX = typename ItemIDXType<I>::type;
+
+template<size_t I> struct LayerType;
+template<> struct LayerType<0> { using type = Layer0; };
+template<> struct LayerType<1> { using type = Layer1; };
+template<> struct LayerType<2> { using type = Layer2; };
+template<> struct LayerType<3> { using type = Layer3; };
+template<> struct LayerType<4> { using type = Layer4; };
+template<> struct LayerType<5> { using type = Layer5; };
+template<size_t I> using Layer = typename LayerType<I>::type;
+
+template<size_t I> struct LayerIDXType;
+template<> struct LayerIDXType<0> { using type = Layer0_IDX; };
+template<> struct LayerIDXType<1> { using type = Layer1_IDX; };
+template<> struct LayerIDXType<2> { using type = Layer2_IDX; };
+template<> struct LayerIDXType<3> { using type = Layer3_IDX; };
+template<> struct LayerIDXType<4> { using type = Layer4_IDX; };
+template<> struct LayerIDXType<5> { using type = Layer5_IDX; };
+template<size_t I> using LayerIDX = typename LayerIDXType<I>::type;
