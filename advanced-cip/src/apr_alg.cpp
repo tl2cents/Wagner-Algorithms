@@ -63,9 +63,25 @@ size_t calc_apr_mem_bytes(int switch_h)
     if (sh > 8)
         sh = 8;
 
-    const size_t stored_ip_bytes = static_cast<size_t>(8 - sh) * MAX_IP_MEM_BYTES;
-    const size_t layer_bytes_with_ip = MAX_LIST_SIZE * idx_size_for_layer(sh == 0 ? 0 : sh);
-    const size_t peak_bytes = layer_bytes_with_ip + stored_ip_bytes;
+    // Simulate forward pass: start at indexed layer `sh`, then for each merge
+    // from `sh`..7 we store one more IP and advance one indexed layer.
+    const size_t ip_bytes_per_item = sizeof(Item_IP);
+    size_t peak_bytes = 0;
+    size_t stored_ips = 0;
+    size_t cur_idx_bytes = idx_size_for_layer(sh == 0 ? 0 : sh);
+
+    for (int lvl = sh; lvl <= 7; ++lvl)
+    {
+        // before producing IP_{lvl+1}
+        size_t mem_before = (cur_idx_bytes + stored_ips * ip_bytes_per_item) * MAX_LIST_SIZE;
+        peak_bytes = std::max(peak_bytes, mem_before);
+
+        // after producing IP_{lvl+1}
+        stored_ips += 1;
+        cur_idx_bytes = idx_size_for_layer(lvl + 1);
+        size_t mem_after = (cur_idx_bytes + stored_ips * ip_bytes_per_item) * MAX_LIST_SIZE;
+        peak_bytes = std::max(peak_bytes, mem_after);
+    }
 
     // Keep CIP-PR safety margin so recover_IP (which uses indexed layers) is always safe.
     const size_t base_bytes = MAX_ITEM_MEM_BYTES;
