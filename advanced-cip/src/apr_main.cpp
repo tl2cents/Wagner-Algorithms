@@ -386,7 +386,7 @@ int main(int argc, char **argv)
         else if (a.rfind("--sort=", 0) == 0)
             sortopt = a.substr(7);
         else if (a.rfind("--switch-h=", 0) == 0)
-            switch_h = atoi_or(argv[i] + 12, switch_h);
+            switch_h = atoi_or(argv[i] + 11, switch_h);
         else if (a.rfind("--em=", 0) == 0)
             em_path = a.substr(5);
         else if (a == "--verbose")
