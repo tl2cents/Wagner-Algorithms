@@ -1,29 +1,30 @@
-$ ./run_apr_curve.sh --seed 42 --iters 5
+$ ./run_apr_curve.sh --seed 42 --iters 2
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃  Equihash(144,5) CIP-APR Switching Height Curve     ┃
 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-Seed: 42  Iters: 5  Heights: 0 1 2 3 4
+Seed: 42  Iters: 2  Heights: 0 1 2 3 4
 
 Running CIP-APR with different switching heights...
 ────────────────────────────────────────────────────────
-[h=0] Running 5 iteration(s)... Done. sols=10 time=8.40s sol/s=0.24 mem=1734.3MB
-[h=1] Running 5 iteration(s)... Done. sols=10 time=11.05s sol/s=0.18 mem=1477.8MB
-[h=2] Running 5 iteration(s)... Done. sols=10 time=14.99s sol/s=0.13 mem=1221.6MB
-[h=3] Running 5 iteration(s)... Done. sols=10 time=19.74s sol/s=0.10 mem=965.0MB
-[h=4] Running 5 iteration(s)... Done. sols=10 time=25.31s sol/s=0.08 mem=708.3MB
+[h=0] Running 2 iteration(s)... Done. sols=3 time=8.66s sol/s=0.17 mem=1733.4MB
+[h=1] Running 2 iteration(s)... Done. sols=3 time=11.34s sol/s=0.13 mem=1198.1MB
+[h=2] Running 2 iteration(s)... Done. sols=3 time=15.10s sol/s=0.10 mem=941.7MB
+[h=3] Running 2 iteration(s)... Done. sols=3 time=19.59s sol/s=0.08 mem=714.9MB
+[h=4] Running 2 iteration(s)... Done. sols=3 time=24.97s sol/s=0.06 mem=708.4MB
 
 Results Summary
 ────────────────────────────────────────────────────────
 Height        Time(s)  Solutions      Sol/s     PeakRSS(kB)  PeakRSS(MB)
 -------- ------------ ---------- ---------- --------------- ------------
-h=0              8.40         10       0.24         1775944       1734.3
-h=1             11.05         10       0.18         1513304       1477.8
-h=2             14.99         10       0.13         1250932       1221.6
-h=3             19.74         10       0.10          988152        965.0
-h=4             25.31         10       0.08          725336        708.3
+h=0              8.66          3       0.17         1775052       1733.4
+h=1             11.34          3       0.13         1226888       1198.1
+h=2             15.10          3       0.10          964340        941.7
+h=3             19.59          3       0.08          732024        714.9
+h=4             24.97          3       0.06          725416        708.4
 
 Notes:
   - Higher switching_height = lower memory, longer time (more recomputation)
   - h=0: No partial recomputation (baseline memory)
   - h=4: Maximum recomputation (minimum memory)
 Benchmark complete.
+(sage) moon@IcingMoo
