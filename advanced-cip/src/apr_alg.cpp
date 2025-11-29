@@ -71,7 +71,8 @@ size_t calc_apr_mem_bytes(int switch_h)
     size_t peak_bytes = 0;
     if (sh == 0)
     {
-        peak_bytes = MAX_CIP_BYTES;
+        // Plain CIP: items + IP1..IP8
+        peak_bytes = MAX_ITEM_MEM_BYTES + 8 * MAX_IP_MEM_BYTES;
     }
     else if (sh == 8)
     {
