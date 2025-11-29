@@ -1,4 +1,5 @@
 #include "advanced_pr.h"
+#include <algorithm>
 #include <cstring>
 #include <cstdlib>
 #include <fstream>
@@ -19,7 +20,7 @@ inline uint64_t MAX_IP_MEM_BYTES = MAX_LIST_SIZE * sizeof(Item_IP);
 inline uint64_t MAX_ITEM_MEM_BYTES = MAX_LIST_SIZE * sizeof(Item0_IDX);
 // We can use a little less memory, i.e., `MAX_LIST_SIZE * sizeof(Item0_IDX)` but it will complicate memory management and other unconveniences.
 // The peak memory of performing merge_7_ip_inplace is Layer7 + IP6 + IP7 + IP8 in our impl, i.e., the following peak memory to keep things simple (extra memory of 2MB)
-inline uint64_t MAX_MEM_BYTES_APR5 = MAX_LIST_SIZE * sizeof(Item7_IDX) + 3 * MAX_LIST_SIZE * sizeof(Item_IP);
+[[maybe_unused]] inline uint64_t MAX_MEM_BYTES_APR5 = MAX_LIST_SIZE * sizeof(Item7_IDX) + 3 * MAX_LIST_SIZE * sizeof(Item_IP);
 // The same aplies for advanced_cip_pr_4
 // inline uint64_t MAX_MEM_BYTES_APR4 = MAX_LIST_SIZE * sizeof(Item7_IDX) + 4 * MAX_LIST_SIZE * sizeof(Item_IP);
 
@@ -27,6 +28,49 @@ inline uint64_t MAX_MEM_BYTES_APR5 = MAX_LIST_SIZE * sizeof(Item7_IDX) + 3 * MAX
 
 SortAlgo g_sort_algo = SortAlgo::KXSORT;
 bool g_verbose = true;
+
+static inline size_t idx_size_for_layer(int h)
+{
+    switch (h)
+    {
+    case 0:
+        return sizeof(Item0_IDX);
+    case 1:
+        return sizeof(Item1_IDX);
+    case 2:
+        return sizeof(Item2_IDX);
+    case 3:
+        return sizeof(Item3_IDX);
+    case 4:
+        return sizeof(Item4_IDX);
+    case 5:
+        return sizeof(Item5_IDX);
+    case 6:
+        return sizeof(Item6_IDX);
+    case 7:
+        return sizeof(Item7_IDX);
+    case 8:
+    default:
+        return sizeof(Item8_IDX);
+    }
+}
+
+size_t calc_apr_mem_bytes(int switch_h)
+{
+    int sh = switch_h;
+    if (sh < 0)
+        sh = 0;
+    if (sh > 8)
+        sh = 8;
+
+    const size_t stored_ip_bytes = static_cast<size_t>(8 - sh) * MAX_IP_MEM_BYTES;
+    const size_t layer_bytes_with_ip = MAX_LIST_SIZE * idx_size_for_layer(sh == 0 ? 0 : sh);
+    const size_t peak_bytes = layer_bytes_with_ip + stored_ip_bytes;
+
+    // Keep CIP-PR safety margin so recover_IP (which uses indexed layers) is always safe.
+    const size_t base_bytes = MAX_ITEM_MEM_BYTES;
+    return std::max(base_bytes, peak_bytes);
+}
 
 /**
  * @brief Recover the Index Poiter (IP) layer at height h.
@@ -380,41 +424,39 @@ std::vector<Solution> plain_cip_pr(int seed, uint8_t *base = nullptr)
 /**
  * @brief Advanced CIP with Post-Retrieval (Advanced CIP-PR) - memory layout optimization
  *
- * This algorithm uses an advanced strategy that stores some IP layers while recovering others:
- * - Forward pass: Store IP layers 6-9 (upper 4 layers)
- * - Post-retrieval: Recover IP layers 1-5 (lower 5 layers) on-demand if needed
+ * This algorithm uses an advanced strategy that stores some IP layers while recovering others.
+ * The switching height controls how many IP layers are kept:
+ * - Layers above switch_h: stored during the forward pass (IP_{switch_h+1}..IP8)
+ * - Layers at/below switch_h: recovered on demand during the backward pass
  *
  * Algorithm flow:
- * 1. Forward pass (non-indexed): L0 -> L1 -> L2 -> L3 -> L4 -> L5
- *    - Uses Item0-Item5 types (no index field) since indices are not needed yet
- * 2. Add indices at layer 5: Convert L5 to L5_IDX (expand with indices)
- * 3. Forward pass (indexed): L5_IDX -> L6_IDX -> L7_IDX -> L8_IDX -> IP9
- *    - Store IP6, IP7, IP8, IP9 in memory
- * 4. Solution expansion: If IP9 non-empty, expand solutions using IP6, IP7, IP8.
- * 4. Post-retrieval: If solutions exist, recover IP1-IP5 on-demand
- *    - Each recovery recomputes L0 -> L(h-1) -> IPh from scratch
- *    - Expand solutions backwards using recovered IP layer: IPh
+ * 1. Forward pass (non-indexed) until layer switch_h
+ *    - Uses Item* types (no index field) to save memory
+ * 2. Convert the layer at height switch_h to indexed form
+ * 3. Forward pass (indexed) with IP storage for higher layers
+ *    - Store IP_{switch_h+1}..IP8 in memory, compute IP9
+ * 4. Backward pass:
+ *    - Expand stored IPs (9 down to switch_h+1)
+ *    - Recover IP_{switch_h}..IP1 on demand using recover_IP
  *
  *
  * @param seed Random seed for generating initial layer L0
+ * @param switch_h Switching height (0 => plain CIP, 8 => pure PR)
  * @param base Optional pre-allocated memory buffer. If nullptr, allocates internally.
  * @return std::vector<Solution> All non-trivial solutions found
  *
- * Memory layout (total = MAX_MEM_BYTES_APR5):
- * - [0, MAX_ITEM_MEM_BYTES): Item layer storage for L0, L1, ..., L8
- * - [base_end - 3*MAX_IP_MEM_BYTES, base_end - 2*MAX_IP_MEM_BYTES): IP8 storage
- * - [base_end - 2*MAX_IP_MEM_BYTES, base_end - 1*MAX_IP_MEM_BYTES): IP7 storage
- * - [base_end - 1*MAX_IP_MEM_BYTES, base_end): IP6 storage
- * - IP1,..., IP5, IP9 reuses the layer buffer at [0, MAX_IP_MEM_BYTES).
- *
- * Note: if pre-allocated memory buffer is provided (base != nullptr), it must
- * allocate at least `MAX_MEM_BYTES_APR5` bytes.
+ * Memory sizing: use calc_apr_mem_bytes(switch_h) to provision a buffer big
+ * enough for the active layer plus the stored IP arrays.
  */
-std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr)
+std::vector<Solution> advanced_cip_pr(int seed, int switch_h, uint8_t *base)
 {
-    // Memory calculation: Layer7_IDX + 3 IP arrays
-    // We use slightly more memory for simplicity (extra ~2MB)
-    size_t total_mem = MAX_MEM_BYTES_APR5;
+    // Normalize switch height and reuse specialized paths on the extremes.
+    if (switch_h <= 0)
+        return plain_cip(seed, base);
+    if (switch_h >= 8)
+        return plain_cip_pr(seed, base);
+
+    const size_t total_mem = calc_apr_mem_bytes(switch_h);
     bool own_base = false;
     if (base == nullptr)
     {
@@ -423,77 +465,201 @@ std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr)
     }
     IFV
     {
-        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
+        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << " (switch_h=" << switch_h << ")" << std::endl;
     }
-    // Warning: Please ensure that the provided base memory is at least `total_mem` bytes, otherwise corrupted memory access may occur.
 
-    uint8_t *base_end = base + MAX_MEM_BYTES_APR5;
+    uint8_t *base_end = base + total_mem;
 
-    // Initialize layer buffers (non-indexed for layers 0-5, indexed for 6-8)
-    Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
-    Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
-    Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
-    Layer3 L3 = init_layer<Item3>(base, MAX_LIST_SIZE * sizeof(Item3));
-    Layer4 L4 = init_layer<Item4>(base, MAX_LIST_SIZE * sizeof(Item4));
-    Layer5 L5 = init_layer<Item5>(base, MAX_LIST_SIZE * sizeof(Item5));
-    Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
-    Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
-    Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+    // Layer buffers (non-indexed and indexed views share the same base)
+    Layer0 L0 = init_layer<Item0>(base, total_mem);
+    Layer1 L1 = init_layer<Item1>(base, total_mem);
+    Layer2 L2 = init_layer<Item2>(base, total_mem);
+    Layer3 L3 = init_layer<Item3>(base, total_mem);
+    Layer4 L4 = init_layer<Item4>(base, total_mem);
+    Layer5 L5 = init_layer<Item5>(base, total_mem);
+    Layer6 L6 = init_layer<Item6>(base, total_mem);
+    Layer7 L7 = init_layer<Item7>(base, total_mem);
+    Layer8 L8 = init_layer<Item8>(base, total_mem);
 
-    // Initialize IP storage (allocated from the end of buffer)
-    Layer_IP IP6 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
-    Layer_IP IP7 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
-    Layer_IP IP8 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+    Layer0_IDX L0_IDX = init_layer<Item0_IDX>(base, total_mem);
+    Layer1_IDX L1_IDX = init_layer<Item1_IDX>(base, total_mem);
+    Layer2_IDX L2_IDX = init_layer<Item2_IDX>(base, total_mem);
+    Layer3_IDX L3_IDX = init_layer<Item3_IDX>(base, total_mem);
+    Layer4_IDX L4_IDX = init_layer<Item4_IDX>(base, total_mem);
+    Layer5_IDX L5_IDX = init_layer<Item5_IDX>(base, total_mem);
+    Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, total_mem);
+    Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, total_mem);
+    Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, total_mem);
+
+    // IP storage (only store layers above the switching height)
+    const int stored_ip_cnt = 8 - switch_h;
+    std::vector<Layer_IP> stored_ips(stored_ip_cnt);
+    for (int i = 0; i < stored_ip_cnt; ++i)
+    {
+        stored_ips[i] = init_layer<Item_IP>(base_end - static_cast<size_t>(i + 1) * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+    }
+    auto get_stored_ip = [&](int ip_level) -> Layer_IP & {
+        // ip_level in [switch_h+1, 8]
+        return stored_ips[ip_level - (switch_h + 1)];
+    };
     Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES); // Reuse layer buffer
 
-    // Forward pass Part 1: Non-indexed layers (0-5)
-    // These layers don't track indices, using simpler Item types to save memory
+    // ------------------------------------------------------------------
+    // Forward pass: XOR-only until switch_h, then indexed with IP store.
+    // ------------------------------------------------------------------
     fill_layer0(L0, seed);
-    merge0_inplace(L0, L1);
-    merge1_inplace(L1, L2);
-    merge2_inplace(L2, L3);
-    merge3_inplace(L3, L4);
-    merge4_inplace(L4, L5);
+    if (switch_h > 0)
+    {
+        merge0_inplace(L0, L1);
+        clear_vec(L0);
+    }
+    if (switch_h > 1)
+    {
+        merge1_inplace(L1, L2);
+        clear_vec(L1);
+    }
+    if (switch_h > 2)
+    {
+        merge2_inplace(L2, L3);
+        clear_vec(L2);
+    }
+    if (switch_h > 3)
+    {
+        merge3_inplace(L3, L4);
+        clear_vec(L3);
+    }
+    if (switch_h > 4)
+    {
+        merge4_inplace(L4, L5);
+        clear_vec(L4);
+    }
+    if (switch_h > 5)
+    {
+        merge5_inplace(L5, L6);
+        clear_vec(L5);
+    }
+    if (switch_h > 6)
+    {
+        merge6_inplace(L6, L7);
+        clear_vec(L6);
+    }
+    if (switch_h > 7)
+    {
+        merge7_inplace(L7, L8);
+        clear_vec(L7);
+    }
 
-    // Transition: Add indices to layer 5 for tracking from this point forward
-    Layer5_IDX L5_IDX = expand_layer_to_idx_inplace<Item5, Item5_IDX>(L5);
+    // Convert the current layer at height switch_h to indexed form
+    switch (switch_h)
+    {
+    case 1:
+        L1_IDX = expand_layer_to_idx_inplace<Item1, Item1_IDX>(L1);
+        set_index_batch(L1_IDX);
+        break;
+    case 2:
+        L2_IDX = expand_layer_to_idx_inplace<Item2, Item2_IDX>(L2);
+        set_index_batch(L2_IDX);
+        break;
+    case 3:
+        L3_IDX = expand_layer_to_idx_inplace<Item3, Item3_IDX>(L3);
+        set_index_batch(L3_IDX);
+        break;
+    case 4:
+        L4_IDX = expand_layer_to_idx_inplace<Item4, Item4_IDX>(L4);
+        set_index_batch(L4_IDX);
+        break;
+    case 5:
+        L5_IDX = expand_layer_to_idx_inplace<Item5, Item5_IDX>(L5);
+        set_index_batch(L5_IDX);
+        break;
+    case 6:
+        L6_IDX = expand_layer_to_idx_inplace<Item6, Item6_IDX>(L6);
+        set_index_batch(L6_IDX);
+        break;
+    case 7:
+        L7_IDX = expand_layer_to_idx_inplace<Item7, Item7_IDX>(L7);
+        set_index_batch(L7_IDX);
+        break;
+    default:
+        break;
+    }
 
-    // Forward pass Part 2: Indexed layers (5-8) with IP storage
-    merge5_ip_inplace(L5_IDX, L6_IDX, IP6); // Store IP6
-    set_index_batch(L6_IDX);
-    merge6_ip_inplace(L6_IDX, L7_IDX, IP7); // Store IP7
-    set_index_batch(L7_IDX);
-    merge7_ip_inplace(L7_IDX, L8_IDX, IP8); // Store IP8
-    set_index_batch(L8_IDX);
+    // Indexed merges with IP storage from layer switch_h to 7
+    auto merge_with_ip = [&](int lvl) {
+        switch (lvl)
+        {
+        case 1:
+            merge1_ip_inplace(L1_IDX, L2_IDX, get_stored_ip(2));
+            clear_vec(L1_IDX);
+            set_index_batch(L2_IDX);
+            break;
+        case 2:
+            merge2_ip_inplace(L2_IDX, L3_IDX, get_stored_ip(3));
+            clear_vec(L2_IDX);
+            set_index_batch(L3_IDX);
+            break;
+        case 3:
+            merge3_ip_inplace(L3_IDX, L4_IDX, get_stored_ip(4));
+            clear_vec(L3_IDX);
+            set_index_batch(L4_IDX);
+            break;
+        case 4:
+            merge4_ip_inplace(L4_IDX, L5_IDX, get_stored_ip(5));
+            clear_vec(L4_IDX);
+            set_index_batch(L5_IDX);
+            break;
+        case 5:
+            merge5_ip_inplace(L5_IDX, L6_IDX, get_stored_ip(6));
+            clear_vec(L5_IDX);
+            set_index_batch(L6_IDX);
+            break;
+        case 6:
+            merge6_ip_inplace(L6_IDX, L7_IDX, get_stored_ip(7));
+            clear_vec(L6_IDX);
+            set_index_batch(L7_IDX);
+            break;
+        case 7:
+            merge7_ip_inplace(L7_IDX, L8_IDX, get_stored_ip(8));
+            clear_vec(L7_IDX);
+            set_index_batch(L8_IDX);
+            break;
+        default:
+            break;
+        }
+    };
+
+    for (int lvl = switch_h; lvl <= 7; ++lvl)
+    {
+        merge_with_ip(lvl);
+    }
+
     merge8_inplace_for_ip(L8_IDX, IP9); // Generate IP9 (solutions)
+    clear_vec(L8_IDX);
 
     IFV
     {
         std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
-        std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
-        std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
-        std::cout << "Layer 6 IP size: " << IP6.size() << std::endl;
+        for (int lvl = 8; lvl >= switch_h + 1; --lvl)
+        {
+            std::cout << "Layer " << lvl << " IP size: " << get_stored_ip(lvl).size() << std::endl;
+        }
     }
 
     std::vector<Solution> solutions;
 
-    // Backward pass: Expand solutions if any exist
-    // Backward pass: Expand solutions if any exist
+    // Backward pass: expand stored IPs, then recover the rest on demand.
     if (IP9.size() != 0)
     {
-        // Expand stored IP layers (9, 8, 7, 6)
         expand_solutions(solutions, IP9);
-        expand_solutions(solutions, IP8);
-        expand_solutions(solutions, IP7);
-        expand_solutions(solutions, IP6);
-
-        // Recover and expand lower IP layers (5 down to 1) on-demand
-        // Each recover_IP recomputes L0 -> L(h-1) -> IPh using the base buffer
-        for (int h = 5; h >= 1; --h)
+        for (int lvl = 8; lvl >= switch_h + 1; --lvl)
+        {
+            expand_solutions(solutions, get_stored_ip(lvl));
+        }
+        for (int h = switch_h; h >= 1; --h)
         {
             Layer_IP IPh = recover_IP(h, seed, base); // Recompute IPh on-demand
             IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
-            expand_solutions(solutions, IPh); // Expand solutions using IPh
+            expand_solutions(solutions, IPh);
         }
         filter_trivial_solutions(solutions); // Remove solutions with repeated indices
     }

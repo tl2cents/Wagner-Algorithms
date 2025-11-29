@@ -139,6 +139,8 @@ The 4-way BLAKE2b SIMD build (`-x4` / `equix41`) requires a CPU with AVX2 suppor
 ./run.sh (-x4) --iters 2000 --seed 0
 ```
 
+For `cip-apr`, you can sweep different switching heights with `--switch-h=N` (0 maps to plain CIP, 8 maps to PR; default 5).
+
 Plain compile (if `cmake` not available):
 
 ``` bash

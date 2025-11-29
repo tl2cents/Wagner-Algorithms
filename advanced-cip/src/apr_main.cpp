@@ -15,20 +15,20 @@
 // Forward declarations from apr_alg.cpp
 std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr);
 std::vector<Solution> plain_cip_pr(int seed, uint8_t *base = nullptr);
-std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr);
+std::vector<Solution> advanced_cip_pr(int seed, int switch_h = 5, uint8_t *base = nullptr);
 std::vector<Solution> cip_em(int seed, const std::string &em_path, uint8_t *base = nullptr);
 std::vector<Solution> cip_em_extra_ip_cache(int seed, const std::string &em_path, uint8_t *base = nullptr);
+
+size_t calc_apr_mem_bytes(int switch_h);
 
 // Globals
 extern SortAlgo g_sort_algo;
 extern bool g_verbose;
 extern uint64_t MAX_ITEM_MEM_BYTES;
 extern uint64_t MAX_IP_MEM_BYTES;
-extern uint64_t MAX_MEM_BYTES_APR5;
 
 const inline uint64_t MAX_CIP_BYTES = MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES * 8;
 const inline uint64_t MAX_CIP_PR_BYTES = MAX_ITEM_MEM_BYTES;
-const inline uint64_t MAX_CIP_APR_BYTES = MAX_MEM_BYTES_APR5;
 const inline uint64_t MAX_CIP_EM_BYTES = MAX_ITEM_MEM_BYTES;
 const inline uint64_t MAX_CIP_EMC_BYTES = MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES;
 
@@ -214,18 +214,23 @@ static int run_mode_pr(int seed, int iters, bool do_check, bool verbose,
 }
 
 static int run_mode_apr(int seed, int iters, bool do_check, bool verbose,
-                        const std::string &sort_name)
+                        const std::string &sort_name, int switch_h)
 {
+    if (switch_h < 0)
+        switch_h = 0;
+    if (switch_h > 8)
+        switch_h = 8;
     g_verbose = verbose;
     g_sort_algo = (sort_name == "std") ? SortAlgo::STD : SortAlgo::KXSORT;
-    uint8_t *base = static_cast<uint8_t *>(std::malloc(MAX_CIP_APR_BYTES));
+    size_t mem_need = calc_apr_mem_bytes(switch_h);
+    uint8_t *base = static_cast<uint8_t *>(std::malloc(mem_need));
     if (base == nullptr)
     {
-        std::cerr << "Failed to allocate " << (MAX_CIP_APR_BYTES / (1024 * 1024)) << " MB of memory" << std::endl;
+        std::cerr << "Failed to allocate " << (mem_need / (1024 * 1024)) << " MB of memory" << std::endl;
         return 1;
     }
     // Touch the allocation to ensure pages are committed (avoids lazy-fault surprises).
-    std::memset(base, 0, MAX_CIP_APR_BYTES);
+    std::memset(base, 0, mem_need);
 
     double t_fwd_exp_sum = 0.0, t_verify_sum = 0.0;
     size_t total_sols = 0;
@@ -235,7 +240,7 @@ static int run_mode_apr(int seed, int iters, bool do_check, bool verbose,
         int current_seed = seed + it;
 
         auto t0 = now_s();
-        std::vector<Solution> solutions = advanced_cip_pr(current_seed, base);
+        std::vector<Solution> solutions = advanced_cip_pr(current_seed, switch_h, base);
         auto t1 = now_s();
         t_fwd_exp_sum += (t1 - t0);
 
@@ -329,7 +334,8 @@ static int run_mode_em(int seed, int iters, bool do_check, bool verbose,
 
 // ------------ test harness (isolation via exec) ------------
 static int run_test_harness(int seed, int iters, bool do_check,
-                            const std::string &sortopt, const std::string &em_path)
+                            const std::string &sortopt, const std::string &em_path,
+                            int switch_h)
 {
     const std::string exe = self_exe_path();
     const char *modes[4] = {"cip", "cip-pr", "cip-apr", "cip-em"};
@@ -348,6 +354,10 @@ static int run_test_harness(int seed, int iters, bool do_check,
         {
             args.push_back(std::string("--em=") + em_path);
         }
+        if (std::string(modes[i]) == "cip-apr")
+        {
+            args.push_back(std::string("--switch-h=") + std::to_string(switch_h));
+        }
         // no --verbose to avoid IO noise
         int rc = run_isolated_child(args);
         if (rc != 0)
@@ -362,6 +372,7 @@ int main(int argc, char **argv)
     int seed = 0, iters = 1;
     bool do_check = true, verbose = false, run_test = false;
     std::string mode = "cip", sortopt = "kx", em_path = "ip_cache.bin";
+    int switch_h = 5;
 
     for (int i = 1; i < argc; i++)
     {
@@ -374,6 +385,8 @@ int main(int argc, char **argv)
             mode = a.substr(7);
         else if (a.rfind("--sort=", 0) == 0)
             sortopt = a.substr(7);
+        else if (a.rfind("--switch-h=", 0) == 0)
+            switch_h = atoi_or(argv[i] + 12, switch_h);
         else if (a.rfind("--em=", 0) == 0)
             em_path = a.substr(5);
         else if (a == "--verbose")
@@ -387,7 +400,8 @@ int main(int argc, char **argv)
                              << " [--mode=cip|cip-pr|cip-apr|cip-em] [--seed=N] [--iters=M] "
                                  "[--sort=std|kx]"
                              << " [--verbose] [--test] [--em=path]\n"
-                             << "  --em=path: External memory file path (default: ip_cache.bin)\n";
+                             << "  --em=path: External memory file path (default: ip_cache.bin)\n"
+                             << "  --switch-h=N: Switching height for cip-apr (0..8, default: 5)\n";
             return 0;
         }
     }
@@ -395,7 +409,7 @@ int main(int argc, char **argv)
 
     if (run_test)
     {
-        return run_test_harness(seed, iters, do_check, sortopt, em_path);
+        return run_test_harness(seed, iters, do_check, sortopt, em_path, switch_h);
     }
 
     if (mode == "cip")
@@ -408,7 +422,11 @@ int main(int argc, char **argv)
     }
     else if (mode == "cip-apr")
     {
-        return run_mode_apr(seed, iters, do_check, verbose, sortopt);
+        if (switch_h < 0)
+            switch_h = 0;
+        if (switch_h > 8)
+            switch_h = 8;
+        return run_mode_apr(seed, iters, do_check, verbose, sortopt, switch_h);
     }
     else if (mode == "cip-em")
     {
