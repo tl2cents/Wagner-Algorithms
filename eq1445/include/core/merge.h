@@ -687,3 +687,114 @@ inline void merge_em_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
     }
     flush_ips();
 }
+
+
+// merge_iv_inplace_generic: Layer_IV_{i} ==> Layer_IV_{i+1}
+// SrcIV and DstIV must be IndexVector type: DstIV stores merged indices from two SrcIVs (IV_{i} to IV_{i+1})
+// src_arr and dst_arr do not share memory, thus you no longer need to worry about memory overlap.
+// just write the newly merged items to dst_arr, no tmp buffer and free_bytes management needed.
+//
+// Template parameters:
+// - SrcIV: IndexVector<INDEX_BYTES, LAYER> for source layer
+// - DstIV: IndexVector<INDEX_BYTES, LAYER+1> for destination layer
+// - merge_iv_func: function to merge two SrcIVs into one DstIV (use merge_iv from equihash_base.h)
+// - sort_iv_func: function to sort src_arr by key with seed (uses seed-dependent hash computation)
+// - discard_zero: whether to discard zero XOR results (false for Equihash 144,5)
+// - KeyType: type of the collision key (e.g., uint32_t for 24-bit keys)
+// - key_func: function to extract key from SrcIV with seed (uses seed-dependent hash computation)
+// - is_zero_func: optional function to check if merged result is zero with seed (for discard_zero=true)
+// - is_last: whether this is the final merge layer (skip large groups)
+template <typename SrcIV, typename DstIV,
+          DstIV (*merge_iv_func)(const SrcIV &, const SrcIV &),
+          void (*sort_iv_func)(LayerVec<SrcIV> &, int), bool discard_zero,
+          typename KeyType, KeyType (*key_func)(int, const SrcIV &),
+          bool (*is_zero_func)(int, const DstIV &) = nullptr,
+          bool is_last = false>
+inline void merge_iv_inplace_generic(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &dst_arr, int seed)
+{
+    static_assert(key_func != nullptr, "Key extractor must be provided");
+    static_assert(!discard_zero || is_zero_func != nullptr,
+                  "Zero-check function required when discarding zeros");
+
+    if (src_arr.empty())
+        return;
+
+    // Sort source array by collision key (seed-dependent)
+    sort_iv_func(src_arr, seed);
+
+    const size_t N = src_arr.size();
+    size_t avail_dst = dst_arr.capacity() - dst_arr.size();
+
+    // For discard_zero mode, we need a skip buffer to mark zero-pair items
+    std::vector<uint8_t> skip_buf;
+    if constexpr (discard_zero)
+    {
+        skip_buf.reserve(GROUP_BOUND);
+    }
+
+    size_t i = 0;
+    while (i < N)
+    {
+        // Find group with same collision key
+        const size_t group_start = i;
+        const auto key0 = key_func(seed, src_arr[group_start]);
+        i++;
+        while (i < N && key_func(seed, src_arr[i]) == key0)
+            ++i;
+        const size_t group_end = i;
+        const size_t group_size = group_end - group_start;
+
+        if constexpr (discard_zero)
+        {
+            // Mark items that produce zero XOR when merged
+            skip_buf.assign(group_size, 0);
+            for (size_t j1 = group_start; j1 < group_end; ++j1)
+            {
+                if (skip_buf[j1 - group_start])
+                    continue;
+                for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
+                {
+                    if (skip_buf[j2 - group_start])
+                        continue;
+                    DstIV out = merge_iv_func(src_arr[j1], src_arr[j2]);
+                    if (is_zero_func(seed, out))
+                    {
+                        skip_buf[j2 - group_start] = 1;
+                        continue;
+                    }
+                    if (dst_arr.size() >= avail_dst)
+                        break;
+                    dst_arr.push_back(out);
+                }
+                if (dst_arr.size() >= avail_dst)
+                    break;
+            }
+        }
+        else
+        {
+            // Skip large groups in final merge to avoid explosion
+            if constexpr (is_last)
+            {
+                if (group_size > 3)
+                    continue;
+            }
+
+            // Generate all pairs within the group
+            for (size_t j1 = group_start; j1 < group_end; ++j1)
+            {
+                for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
+                {
+                    if (dst_arr.size() >= avail_dst)
+                        break;
+                    dst_arr.push_back(merge_iv_func(src_arr[j1], src_arr[j2]));
+                }
+                if (dst_arr.size() >= avail_dst)
+                    break;
+            }
+        }
+
+        // Check if destination is full
+        if (dst_arr.size() >= avail_dst)
+            break;
+    }
+}

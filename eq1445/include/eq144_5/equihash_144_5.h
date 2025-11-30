@@ -46,6 +46,14 @@ using Item5_IDX = ItemValIdx<EquihashParams::kLayer5XorBytes, EquihashParams::kI
 
 using Item_IP = ItemIP<EquihashParams::kIndexBytes>;
 
+// IV types: Index Vector only
+using IV0 = IndexVector<EquihashParams::kIndexBytes, 0>;
+using IV1 = IndexVector<EquihashParams::kIndexBytes, 1>;
+using IV2 = IndexVector<EquihashParams::kIndexBytes, 2>;
+using IV3 = IndexVector<EquihashParams::kIndexBytes, 3>;
+using IV4 = IndexVector<EquihashParams::kIndexBytes, 4>;
+using IV5 = IndexVector<EquihashParams::kIndexBytes, 5>;
+
 using Layer0 = LayerVec<Item0>;
 using Layer1 = LayerVec<Item1>;
 using Layer2 = LayerVec<Item2>;
@@ -60,6 +68,13 @@ using Layer3_IDX = LayerVec<Item3_IDX>;
 using Layer4_IDX = LayerVec<Item4_IDX>;
 using Layer5_IDX = LayerVec<Item5_IDX>;
 using Layer_IP = LayerVec<Item_IP>;
+
+using Layer0_IV = LayerVec<IV0>;
+using Layer1_IV = LayerVec<IV1>;
+using Layer2_IV = LayerVec<IV2>;
+using Layer3_IV = LayerVec<IV3>;
+using Layer4_IV = LayerVec<IV4>;
+using Layer5_IV = LayerVec<IV5>;
 
 using IPDiskMeta = equihash::IPDiskMetaT<Item_IP>;
 using IPDiskManifest = equihash::IPDiskManifestT<Item_IP, 4>; // Stores IP1-IP4 on disk
@@ -103,3 +118,21 @@ template<> struct LayerIDXType<3> { using type = Layer3_IDX; };
 template<> struct LayerIDXType<4> { using type = Layer4_IDX; };
 template<> struct LayerIDXType<5> { using type = Layer5_IDX; };
 template<size_t I> using LayerIDX = typename LayerIDXType<I>::type;
+
+template<size_t I> struct IVType;
+template<> struct IVType<0> { using type = IV0; };
+template<> struct IVType<1> { using type = IV1; };
+template<> struct IVType<2> { using type = IV2; };
+template<> struct IVType<3> { using type = IV3; };
+template<> struct IVType<4> { using type = IV4; };
+template<> struct IVType<5> { using type = IV5; };
+template<size_t I> using IV = typename IVType<I>::type;
+
+template<size_t I> struct Layer_IVType;
+template<> struct Layer_IVType<0> { using type = Layer0_IV; };
+template<> struct Layer_IVType<1> { using type = Layer1_IV; };
+template<> struct Layer_IVType<2> { using type = Layer2_IV; };
+template<> struct Layer_IVType<3> { using type = Layer3_IV; };
+template<> struct Layer_IVType<4> { using type = Layer4_IV; };
+template<> struct Layer_IVType<5> { using type = Layer5_IV; };
+template<size_t I> using LayerIV = typename Layer_IVType<I>::type;

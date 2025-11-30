@@ -164,6 +164,36 @@ add_custom_target(benchmark_apr
   COMMENT "Running APR performance benchmark..."
 )
 
+# =============================================================================
+# Testing Support
+# =============================================================================
+enable_testing()
+
+# Test sources
+set(TEST_COMMON
+  third_party/blake/blake2b.cpp
+)
+
+# Test: test_iv - Basic IndexVector tests
+add_executable(test_iv test/test_iv.cpp ${TEST_COMMON})
+apply_common_opts(test_iv)
+add_test(NAME test_iv COMMAND test_iv)
+
+# Test: test_layer_iv - Layer IV key verification and sort consistency
+add_executable(test_layer_iv test/test_layer_iv.cpp ${TEST_COMMON})
+apply_common_opts(test_layer_iv)
+add_test(NAME test_layer_iv COMMAND test_layer_iv)
+
+# Test: check_size - Check IndexVector size consistency
+add_executable(check_size test/check_size.cpp ${TEST_COMMON})
+apply_common_opts(check_size)
+add_test(NAME check_size COMMAND check_size)
+
+# Test: verify_size - Verify sizeof == TotalBytes for IndexVector
+add_executable(verify_size test/verify_size.cpp ${TEST_COMMON})
+apply_common_opts(verify_size)
+add_test(NAME verify_size COMMAND verify_size)
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER}")
 message(STATUS "ENABLE_AVX2=${ENABLE_AVX2}, ENABLE_LTO=${ENABLE_LTO}, USE_LLD=${USE_LLD}")

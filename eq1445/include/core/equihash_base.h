@@ -159,6 +159,94 @@ struct ItemIP
     uint8_t index_pointer_right[INDEX_BYTES];
 };
 
+// ============================================================================
+// Index Vector (IV) - Stores 2^i indices for each item at layer i
+// ============================================================================
+
+template <std::size_t INDEX_BYTES, std::size_t LAYER>
+struct IndexVector
+{
+    static constexpr std::size_t NumIndices = (1ULL << LAYER);
+    static constexpr std::size_t TotalBytes = INDEX_BYTES * NumIndices;
+    uint8_t indices[TotalBytes];
+
+    IndexVector() = default;
+
+    // Get the k-th index
+    inline size_t get_index(size_t k) const
+    {
+        assert(k < NumIndices);
+        const uint8_t *ptr = indices + k * INDEX_BYTES;
+        if constexpr (INDEX_BYTES == 4)
+        {
+            uint32_t v32;
+            std::memcpy(&v32, ptr, 4);
+            return v32;
+        }
+        else if constexpr (INDEX_BYTES == 8)
+        {
+            uint64_t v64;
+            std::memcpy(&v64, ptr, 8);
+            return static_cast<size_t>(v64);
+        }
+        else
+        {
+            size_t value = 0;
+            for (size_t i = 0; i < INDEX_BYTES; ++i)
+            {
+                value |= static_cast<size_t>(ptr[i]) << (8 * i);
+            }
+            return value;
+        }
+    }
+
+    // Set the k-th index
+    inline void set_index(size_t k, size_t v)
+    {
+        assert(k < NumIndices);
+        uint8_t *ptr = indices + k * INDEX_BYTES;
+        if constexpr (INDEX_BYTES == 4)
+        {
+            uint32_t v32 = static_cast<uint32_t>(v);
+            std::memcpy(ptr, &v32, 4);
+        }
+        else if constexpr (INDEX_BYTES == 8)
+        {
+            uint64_t v64 = static_cast<uint64_t>(v);
+            std::memcpy(ptr, &v64, 8);
+        }
+        else
+        {
+            for (size_t i = 0; i < INDEX_BYTES; ++i)
+            {
+                ptr[i] = static_cast<uint8_t>((v >> (8 * i)) & 0xFF);
+            }
+        }
+    }
+};
+
+// ItemIV: Contains XOR + Index Vector
+template <int XOR_BYTES, std::size_t INDEX_BYTES, std::size_t LAYER>
+struct ItemIV
+{
+    uint8_t XOR[XOR_BYTES];
+    IndexVector<INDEX_BYTES, LAYER> iv;
+};
+
+// Merge two IVs from layer i to create an IV for layer i+1
+// Result: iv_left || iv_right (concatenation)
+template <std::size_t INDEX_BYTES, std::size_t LAYER>
+inline IndexVector<INDEX_BYTES, LAYER + 1> merge_iv(
+    const IndexVector<INDEX_BYTES, LAYER> &iv_left,
+    const IndexVector<INDEX_BYTES, LAYER> &iv_right)
+{
+    IndexVector<INDEX_BYTES, LAYER + 1> result;
+    constexpr std::size_t half_bytes = IndexVector<INDEX_BYTES, LAYER>::TotalBytes;
+    std::memcpy(result.indices, iv_left.indices, half_bytes);
+    std::memcpy(result.indices + half_bytes, iv_right.indices, half_bytes);
+    return result;
+}
+
 namespace equihash
 {
 

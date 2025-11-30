@@ -147,15 +147,21 @@ inline void fill_layer0(Layer_Type &L0, int seed)
     }
 }
 
-inline Item0 compute_ith_item(int seed, size_t leaf_index)
+template <typename ParamsT, typename ItemT>
+inline ItemT _compute_ith_item(int seed, size_t leaf_index)
 {
-    // compute the same leaf value that fill_layer0 writes at L0[leaf_index]
+    // Compute the same leaf value that fill_layer0 writes at L0[leaf_index]
     // leaf_index is in [0 .. FULL-1]; each pair of leaves corresponds to a
-    // single hash output: L0[2*i+0] = out[0..24], L0[2*i+1] = out[25..49]
+    // single hash output: L0[2*i+0] = out[0..(N/8)-1], L0[2*i+1] = out[(N/8)..(2*N/8-1)]
+    static_assert((ParamsT::N % 8) == 0, "Equihash N must be divisible by 8 for byte-aligned leaves");
+    constexpr size_t HASH_BYTES = ParamsT::N / 8;
+    static_assert(ItemXorSize<ItemT> == HASH_BYTES,
+                  "ItemT XOR size must match Equihash N/8 bytes");
+
     uint8_t headernonce[140];
     std::memset(headernonce, 0, sizeof(headernonce));
 
-    uint32_t *nonce_ptr = (uint32_t *)(headernonce + 108);
+    uint32_t *nonce_ptr = reinterpret_cast<uint32_t *>(headernonce + 108);
     *nonce_ptr = seed; // Already little-endian on x86
 
     uint8_t dummy_nonce[32];
@@ -163,8 +169,8 @@ inline Item0 compute_ith_item(int seed, size_t leaf_index)
 
     ZcashEquihashHasher H;
     H.init_midstate(headernonce, sizeof(headernonce), dummy_nonce,
-                    EquihashParams::N,
-                    EquihashParams::K);
+                    ParamsT::N,
+                    ParamsT::K);
 
     const uint32_t pair_idx = static_cast<uint32_t>(leaf_index / 2);
     const bool second = (leaf_index & 1) != 0;
@@ -172,11 +178,15 @@ inline Item0 compute_ith_item(int seed, size_t leaf_index)
     uint8_t out[ZcashEquihashHasher::OUT_LEN];
     H.hash_index(pair_idx, out);
 
-    Item0 item;
-    constexpr size_t XOR_SLICE = ItemXorSize<Item0>;
-    const size_t offset = second ? XOR_SLICE : 0;
-    std::memcpy(item.XOR, out + offset, XOR_SLICE);
+    ItemT item{};
+    const size_t offset = second ? HASH_BYTES : 0;
+    std::memcpy(item.XOR, out + offset, HASH_BYTES);
     return item;
+}
+
+inline Item0 compute_ith_item(int seed, size_t leaf_index)
+{
+    return _compute_ith_item<EquihashParams, Item0>(seed, leaf_index);
 }
 
 template <typename Layer_Type>

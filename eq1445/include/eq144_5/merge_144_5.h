@@ -248,3 +248,91 @@ inline void merge_em_ip_inplace(LayerIDX<I> &s, LayerIDX<I+1> &d, EquihashIPDisk
     else if constexpr (I == 2) merge2_em_ip_inplace(s, d, writer);
     else if constexpr (I == 3) merge3_em_ip_inplace(s, d, writer);
 }
+
+// -----------------------------------------------------------------------------
+// IV merge helpers for Equihash(144,5)
+// -----------------------------------------------------------------------------
+
+// merge_iv wrapper for specific layers
+inline IV1 merge_iv0(const IV0 &a, const IV0 &b)
+{
+    return merge_iv<EquihashParams::kIndexBytes, 0>(a, b);
+}
+inline IV2 merge_iv1(const IV1 &a, const IV1 &b)
+{
+    return merge_iv<EquihashParams::kIndexBytes, 1>(a, b);
+}
+inline IV3 merge_iv2(const IV2 &a, const IV2 &b)
+{
+    return merge_iv<EquihashParams::kIndexBytes, 2>(a, b);
+}
+inline IV4 merge_iv3(const IV3 &a, const IV3 &b)
+{
+    return merge_iv<EquihashParams::kIndexBytes, 3>(a, b);
+}
+inline IV5 merge_iv4(const IV4 &a, const IV4 &b)
+{
+    return merge_iv<EquihashParams::kIndexBytes, 4>(a, b);
+}
+
+// Key extraction wrappers (seed, iv) -> key
+inline uint32_t getKey24_IV0(int seed, const IV0 &iv) { return getKey24<0>(seed, iv); }
+inline uint32_t getKey24_IV1(int seed, const IV1 &iv) { return getKey24<1>(seed, iv); }
+inline uint32_t getKey24_IV2(int seed, const IV2 &iv) { return getKey24<2>(seed, iv); }
+inline uint32_t getKey24_IV3(int seed, const IV3 &iv) { return getKey24<3>(seed, iv); }
+inline uint64_t getKey48_IV4(int seed, const IV4 &iv) { return getKey48<4>(seed, iv); }
+
+// Sort wrappers (layer, seed) -> void
+inline void sort24_IV0(LayerIV<0> &layer, int seed) { sort24_IV<0>(layer, seed); }
+inline void sort24_IV1(LayerIV<1> &layer, int seed) { sort24_IV<1>(layer, seed); }
+inline void sort24_IV2(LayerIV<2> &layer, int seed) { sort24_IV<2>(layer, seed); }
+inline void sort24_IV3(LayerIV<3> &layer, int seed) { sort24_IV<3>(layer, seed); }
+inline void sort48_IV4(LayerIV<4> &layer, int seed) { sort48_IV<4>(layer, seed); }
+
+// IV merge wrapper functions
+inline void merge0_iv_inplace(Layer0_IV &s, Layer1_IV &d, int seed)
+{
+    merge_iv_inplace_generic<IV0, IV1,
+                             merge_iv0, sort24_IV0, false,
+                             uint32_t, getKey24_IV0,
+                             static_cast<bool (*)(int, const IV1 &)>(nullptr)>(s, d, seed);
+}
+inline void merge1_iv_inplace(Layer1_IV &s, Layer2_IV &d, int seed)
+{
+    merge_iv_inplace_generic<IV1, IV2,
+                             merge_iv1, sort24_IV1, false,
+                             uint32_t, getKey24_IV1,
+                             static_cast<bool (*)(int, const IV2 &)>(nullptr)>(s, d, seed);
+}
+inline void merge2_iv_inplace(Layer2_IV &s, Layer3_IV &d, int seed)
+{
+    merge_iv_inplace_generic<IV2, IV3,
+                             merge_iv2, sort24_IV2, false,
+                             uint32_t, getKey24_IV2,
+                             static_cast<bool (*)(int, const IV3 &)>(nullptr)>(s, d, seed);
+}
+inline void merge3_iv_inplace(Layer3_IV &s, Layer4_IV &d, int seed)
+{
+    merge_iv_inplace_generic<IV3, IV4,
+                             merge_iv3, sort24_IV3, false,
+                             uint32_t, getKey24_IV3,
+                             static_cast<bool (*)(int, const IV4 &)>(nullptr)>(s, d, seed);
+}
+inline void merge4_iv_inplace(Layer4_IV &s, Layer5_IV &d, int seed)
+{
+    merge_iv_inplace_generic<IV4, IV5,
+                             merge_iv4, sort48_IV4, false,
+                             uint64_t, getKey48_IV4,
+                             static_cast<bool (*)(int, const IV5 &)>(nullptr),
+                             true>(s, d, seed);
+}
+
+// Template wrapper for indexed IV merge access
+template<size_t I>
+inline void merge_iv_inplace(LayerIV<I> &s, LayerIV<I+1> &d, int seed) {
+    if constexpr (I == 0) merge0_iv_inplace(s, d, seed);
+    else if constexpr (I == 1) merge1_iv_inplace(s, d, seed);
+    else if constexpr (I == 2) merge2_iv_inplace(s, d, seed);
+    else if constexpr (I == 3) merge3_iv_inplace(s, d, seed);
+    else if constexpr (I == 4) merge4_iv_inplace(s, d, seed);
+}
