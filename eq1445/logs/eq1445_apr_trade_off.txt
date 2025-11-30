@@ -1,30 +1,30 @@
-$ ./run_apr_curve.sh --seed 42 --iters 2
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  Equihash(144,5) CIP-APR Switching Height Curve     ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-Seed: 42  Iters: 2  Heights: 0 1 2 3 4
+nohup: ignoring input
+[0;34m[1m┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓[0m
+[0;34m[1m┃  Equihash(144,5) CIP-APR Switching Height Curve     ┃[0m
+[0;34m[1m┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛[0m
+Params: [36m144_5[0m  Seed: [36m0[0m  Iters: [36m300[0m  Heights: [36m0 1 2 3 4[0m
 
-Running CIP-APR with different switching heights...
-────────────────────────────────────────────────────────
-[h=0] Running 2 iteration(s)... Done. sols=3 time=8.66s sol/s=0.17 mem=1733.4MB
-[h=1] Running 2 iteration(s)... Done. sols=3 time=11.34s sol/s=0.13 mem=1198.1MB
-[h=2] Running 2 iteration(s)... Done. sols=3 time=15.10s sol/s=0.10 mem=941.7MB
-[h=3] Running 2 iteration(s)... Done. sols=3 time=19.59s sol/s=0.08 mem=714.9MB
-[h=4] Running 2 iteration(s)... Done. sols=3 time=24.97s sol/s=0.06 mem=708.4MB
+[0;32mRunning CIP-APR with different switching heights...[0m
+[1;33m────────────────────────────────────────────────────────[0m
+[36m[h=0][0m Running 300 iteration(s)... Done. [0;32msols=617[0m time=8.66s sol/s=0.24 USS=1453.5MB
+[36m[h=1][0m Running 300 iteration(s)... Done. [0;32msols=617[0m time=11.52s sol/s=0.18 USS=1197.2MB
+[36m[h=2][0m Running 300 iteration(s)... Done. [0;32msols=617[0m time=15.48s sol/s=0.13 USS=939.5MB
+[36m[h=3][0m Running 300 iteration(s)... Done. [0;32msols=617[0m time=20.35s sol/s=0.10 USS=713.2MB
+[36m[h=4][0m Running 300 iteration(s)... Done. [0;32msols=617[0m time=25.87s sol/s=0.08 USS=706.8MB
 
-Results Summary
-────────────────────────────────────────────────────────
-Height        Time(s)  Solutions      Sol/s     PeakRSS(kB)  PeakRSS(MB)
+[0;32m[1mResults Summary[0m
+[1;33m────────────────────────────────────────────────────────[0m
+[1mHeight        Time(s)  Solutions      Sol/s     PeakUSS(kB)  PeakUSS(MB)[0m
 -------- ------------ ---------- ---------- --------------- ------------
-h=0              8.66          3       0.17         1775052       1733.4
-h=1             11.34          3       0.13         1226888       1198.1
-h=2             15.10          3       0.10          964340        941.7
-h=3             19.59          3       0.08          732024        714.9
-h=4             24.97          3       0.06          725416        708.4
+h=0              8.66        617       0.24         1488416       1453.5
+h=1             11.52        617       0.18         1225920       1197.2
+h=2             15.48        617       0.13          962096        939.5
+h=3             20.35        617       0.10          730276        713.2
+h=4             25.87        617       0.08          723724        706.8
 
-Notes:
+[0;34mNotes:[0m
   - Higher switching_height = lower memory, longer time (more recomputation)
   - h=0: No partial recomputation (baseline memory)
-  - h=4: Maximum recomputation (minimum memory)
-Benchmark complete.
-(sage) moon@IcingMoo
+  - h=4: Maximum recomputation (minimum memory) for Equihash(144,5)
+  - Valid h range: 0 .. 4
+[0;32mBenchmark complete.[0m
