@@ -329,10 +329,10 @@ inline void merge4_iv_layer(Layer4_IV &s, Layer5_IV &d, int seed)
 
 // Template wrapper for indexed IV merge access
 template<size_t I>
-inline void merge_iv_inplace(LayerIV<I> &s, LayerIV<I+1> &d, int seed) {
-    if constexpr (I == 0) merge0_iv_inplace(s, d, seed);
-    else if constexpr (I == 1) merge1_iv_inplace(s, d, seed);
-    else if constexpr (I == 2) merge2_iv_inplace(s, d, seed);
-    else if constexpr (I == 3) merge3_iv_inplace(s, d, seed);
-    else if constexpr (I == 4) merge4_iv_inplace(s, d, seed);
+inline void merge_iv_layer(LayerIV<I> &s, LayerIV<I+1> &d, int seed) {
+    if constexpr (I == 0) merge0_iv_layer(s, d, seed);
+    else if constexpr (I == 1) merge1_iv_layer(s, d, seed);
+    else if constexpr (I == 2) merge2_iv_layer(s, d, seed);
+    else if constexpr (I == 3) merge3_iv_layer(s, d, seed);
+    else if constexpr (I == 4) merge4_iv_layer(s, d, seed);
 }
