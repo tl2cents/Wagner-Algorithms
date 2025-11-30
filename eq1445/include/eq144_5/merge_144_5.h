@@ -292,35 +292,35 @@ inline void sort48_IV4(LayerIV<4> &layer, int seed) { sort48_IV<4>(layer, seed);
 // IV merge wrapper functions
 inline void merge0_iv_inplace(Layer0_IV &s, Layer1_IV &d, int seed)
 {
-    merge_iv_inplace_generic<IV0, IV1,
+    merge_iv_layer_generic<IV0, IV1,
                              merge_iv0, sort24_IV0, false,
                              uint32_t, getKey24_IV0,
                              static_cast<bool (*)(int, const IV1 &)>(nullptr)>(s, d, seed);
 }
-inline void merge1_iv_inplace(Layer1_IV &s, Layer2_IV &d, int seed)
+inline void merge1_iv_layer(Layer1_IV &s, Layer2_IV &d, int seed)
 {
-    merge_iv_inplace_generic<IV1, IV2,
+    merge_iv_layer_generic<IV1, IV2,
                              merge_iv1, sort24_IV1, false,
                              uint32_t, getKey24_IV1,
                              static_cast<bool (*)(int, const IV2 &)>(nullptr)>(s, d, seed);
 }
-inline void merge2_iv_inplace(Layer2_IV &s, Layer3_IV &d, int seed)
+inline void merge2_iv_layer(Layer2_IV &s, Layer3_IV &d, int seed)
 {
-    merge_iv_inplace_generic<IV2, IV3,
+    merge_iv_layer_generic<IV2, IV3,
                              merge_iv2, sort24_IV2, false,
                              uint32_t, getKey24_IV2,
                              static_cast<bool (*)(int, const IV3 &)>(nullptr)>(s, d, seed);
 }
-inline void merge3_iv_inplace(Layer3_IV &s, Layer4_IV &d, int seed)
+inline void merge3_iv_layer(Layer3_IV &s, Layer4_IV &d, int seed)
 {
-    merge_iv_inplace_generic<IV3, IV4,
+    merge_iv_layer_generic<IV3, IV4,
                              merge_iv3, sort24_IV3, false,
                              uint32_t, getKey24_IV3,
                              static_cast<bool (*)(int, const IV4 &)>(nullptr)>(s, d, seed);
 }
-inline void merge4_iv_inplace(Layer4_IV &s, Layer5_IV &d, int seed)
+inline void merge4_iv_layer(Layer4_IV &s, Layer5_IV &d, int seed)
 {
-    merge_iv_inplace_generic<IV4, IV5,
+    merge_iv_layer_generic<IV4, IV5,
                              merge_iv4, sort48_IV4, false,
                              uint64_t, getKey48_IV4,
                              static_cast<bool (*)(int, const IV5 &)>(nullptr),

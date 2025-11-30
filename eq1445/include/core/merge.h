@@ -689,7 +689,7 @@ inline void merge_em_ip_inplace_generic(LayerVec<SrcItem> &src_arr,
 }
 
 
-// merge_iv_inplace_generic: Layer_IV_{i} ==> Layer_IV_{i+1}
+// merge_iv_layer_generic: Layer_IV_{i} ==> Layer_IV_{i+1}
 // SrcIV and DstIV must be IndexVector type: DstIV stores merged indices from two SrcIVs (IV_{i} to IV_{i+1})
 // src_arr and dst_arr do not share memory, thus you no longer need to worry about memory overlap.
 // just write the newly merged items to dst_arr, no tmp buffer and free_bytes management needed.
@@ -710,7 +710,7 @@ template <typename SrcIV, typename DstIV,
           typename KeyType, KeyType (*key_func)(int, const SrcIV &),
           bool (*is_zero_func)(int, const DstIV &) = nullptr,
           bool is_last = false>
-inline void merge_iv_inplace_generic(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &dst_arr, int seed)
+inline void merge_iv_layer_generic(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &dst_arr, int seed)
 {
     static_assert(key_func != nullptr, "Key extractor must be provided");
     static_assert(!discard_zero || is_zero_func != nullptr,
