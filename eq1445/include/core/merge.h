@@ -798,3 +798,115 @@ inline void merge_iv_layer_generic(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &ds
             break;
     }
 }
+
+// merge_ivkey_layer_generic: Layer_IVKey_{i} ==> Layer_IVKey_{i+1}
+// Similar to merge_iv_layer_generic, but uses precomputed keys for faster sorting
+// The merged IV_Keys have their indices set but keys are NOT computed
+// User must call SetIV_Key_Batch after merge to populate keys
+//
+// Template parameters:
+// - SrcIVKey: IndexVectorKey<INDEX_BYTES, LAYER, KeyType> for source layer
+// - DstIVKey: IndexVectorKey<INDEX_BYTES, LAYER+1, KeyType> for destination layer
+// - merge_ivkey_func: function to merge two SrcIVKeys into one DstIVKey (indices only)
+// - sort_ivkey_func: function to sort src_arr by precomputed key (no hash computation needed)
+// - discard_zero: whether to discard zero XOR results (false for Equihash 144,5)
+// - KeyType: type of the collision key (e.g., uint32_t for 24-bit keys)
+// - key_func: function to extract key from SrcIVKey (just returns the stored key)
+// - is_zero_func: optional function to check if merged result is zero with seed (for discard_zero=true)
+// - is_last: whether this is the final merge layer (skip large groups)
+template <typename SrcIVKey, typename DstIVKey,
+          DstIVKey (*merge_ivkey_func)(const SrcIVKey &, const SrcIVKey &),
+          void (*sort_ivkey_func)(LayerVec<SrcIVKey> &, int), bool discard_zero,
+          typename KeyType, KeyType (*key_func)(int, const SrcIVKey &),
+          bool (*is_zero_func)(int, const DstIVKey &) = nullptr,
+          bool is_last = false>
+inline void merge_ivkey_layer_generic(LayerVec<SrcIVKey> &src_arr, LayerVec<DstIVKey> &dst_arr, int seed)
+{
+    static_assert(key_func != nullptr, "Key extractor must be provided");
+    static_assert(!discard_zero || is_zero_func != nullptr,
+                  "Zero-check function required when discarding zeros");
+
+    if (src_arr.empty())
+        return;
+
+    // Sort source array by precomputed collision key (no hash recomputation needed)
+    sort_ivkey_func(src_arr, seed);
+
+    const size_t N = src_arr.size();
+    size_t avail_dst = dst_arr.capacity() - dst_arr.size();
+
+    // For discard_zero mode, we need a skip buffer to mark zero-pair items
+    std::vector<uint8_t> skip_buf;
+    if constexpr (discard_zero)
+    {
+        skip_buf.reserve(GROUP_BOUND);
+    }
+
+    size_t i = 0;
+    while (i < N)
+    {
+        // Find group with same collision key
+        const size_t group_start = i;
+        const auto key0 = key_func(seed, src_arr[group_start]);
+        i++;
+        while (i < N && key_func(seed, src_arr[i]) == key0)
+            ++i;
+        const size_t group_end = i;
+        const size_t group_size = group_end - group_start;
+
+        if constexpr (discard_zero)
+        {
+            // Mark items that produce zero XOR when merged
+            skip_buf.assign(group_size, 0);
+            for (size_t j1 = group_start; j1 < group_end; ++j1)
+            {
+                if (skip_buf[j1 - group_start])
+                    continue;
+                for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
+                {
+                    if (skip_buf[j2 - group_start])
+                        continue;
+                    DstIVKey out = merge_ivkey_func(src_arr[j1], src_arr[j2]);
+                    if (is_zero_func(seed, out))
+                    {
+                        skip_buf[j2 - group_start] = 1;
+                        continue;
+                    }
+                    if (dst_arr.size() >= avail_dst)
+                        break;
+                    dst_arr.push_back(out);
+                }
+                if (dst_arr.size() >= avail_dst)
+                    break;
+            }
+        }
+        else
+        {
+            // Skip large groups in final merge to avoid explosion
+            if constexpr (is_last)
+            {
+                if (group_size > 3)
+                    continue;
+            }
+
+            // Generate all pairs within the group
+            for (size_t j1 = group_start; j1 < group_end; ++j1)
+            {
+                for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
+                {
+                    if (dst_arr.size() >= avail_dst)
+                        break;
+                    // Note: merged DstIVKey has indices set but key is NOT computed
+                    // User must call SetIV_Key_Batch later
+                    dst_arr.push_back(merge_ivkey_func(src_arr[j1], src_arr[j2]));
+                }
+                if (dst_arr.size() >= avail_dst)
+                    break;
+            }
+        }
+
+        // Check if destination is full
+        if (dst_arr.size() >= avail_dst)
+            break;
+    }
+}

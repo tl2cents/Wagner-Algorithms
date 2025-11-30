@@ -1,6 +1,8 @@
 #include "eq144_5/equihash_144_5.h"
 #include "eq144_5/sort_144_5.h"
+#include "eq144_5/merge_144_5.h"
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <cstring>
 #include <iomanip>
@@ -204,6 +206,300 @@ void test_iv0_sort_consistency(int seed)
     std::cout << std::dec << "\n";
 }
 
+// =============================================================================
+// Test: Compare IV vs IV_Key merge performance
+// =============================================================================
+void test_ivkey_vs_iv_performance(int seed)
+{
+    constexpr size_t TEST_SIZE = 50000;
+    std::cout << "=== Performance Comparison: IV vs IV_Key (Layer 1 -> Layer 2) ===" << std::endl;
+    std::cout << "Testing with " << TEST_SIZE << " Layer 1 items...\n\n";
+
+    // Allocate memory for both approaches
+    const size_t mem_size = TEST_SIZE * 2 * sizeof(IV2);
+    uint8_t *mem_iv = static_cast<uint8_t *>(std::malloc(mem_size));
+    uint8_t *mem_ivkey = static_cast<uint8_t *>(std::malloc(mem_size));
+    
+    if (!mem_iv || !mem_ivkey)
+    {
+        std::cerr << "Failed to allocate memory!" << std::endl;
+        std::exit(1);
+    }
+
+    // =============================================================================
+    // Test 1: Pure IV approach (recompute hash during sort)
+    // =============================================================================
+    std::cout << "--- Approach 1: Pure IV (hash recomputation) ---\n";
+    
+    Layer1_IV src_iv = init_layer<IV1>(mem_iv, mem_size);
+    Layer2_IV dst_iv = init_layer<IV2>(mem_iv, mem_size);
+    
+    // Fill Layer 1 IV with test data
+    src_iv.resize(TEST_SIZE);
+    for (size_t i = 0; i < TEST_SIZE; ++i)
+    {
+        src_iv[i].set_index(0, i * 2);
+        src_iv[i].set_index(1, i * 2 + 1);
+    }
+    
+    auto t1_start = std::chrono::high_resolution_clock::now();
+    
+    // Merge Layer 1 -> Layer 2 (with hash recomputation during sort)
+    merge1_iv_layer(src_iv, dst_iv, seed);
+    
+    auto t1_end = std::chrono::high_resolution_clock::now();
+    auto t1_duration = std::chrono::duration_cast<std::chrono::milliseconds>(t1_end - t1_start);
+    
+    std::cout << "  Input size: " << TEST_SIZE << "\n";
+    std::cout << "  Output size: " << dst_iv.size() << "\n";
+    std::cout << "  Time: " << t1_duration.count() << " ms\n\n";
+
+    // =============================================================================
+    // Test 2: IV_Key approach (precomputed keys)
+    // =============================================================================
+    std::cout << "--- Approach 2: IV_Key (precomputed keys) ---\n";
+    
+    Layer1_IVKey src_ivkey = init_layer<IVKey1_24>(mem_ivkey, mem_size);
+    Layer2_IVKey dst_ivkey = init_layer<IVKey2_24>(mem_ivkey, mem_size);
+    
+    // Fill Layer 1 IV_Key with same test data
+    src_ivkey.resize(TEST_SIZE);
+    for (size_t i = 0; i < TEST_SIZE; ++i)
+    {
+        src_ivkey[i].set_index(0, i * 2);
+        src_ivkey[i].set_index(1, i * 2 + 1);
+    }
+    
+    auto t2_start = std::chrono::high_resolution_clock::now();
+    
+    // Step 1: Compute keys for source layer
+    SetIV_Key_Batch<1, EQ1445_COLLISION_BITS, uint32_t>(seed, src_ivkey);
+    
+    auto t2_after_setkey = std::chrono::high_resolution_clock::now();
+    
+    // Step 2: Merge Layer 1 -> Layer 2 (fast sort using precomputed keys)
+    merge1_ivkey_layer(src_ivkey, dst_ivkey, seed);
+    
+    auto t2_after_merge = std::chrono::high_resolution_clock::now();
+    
+    // Step 3: Compute keys for destination layer
+    SetIV_Key_Batch<2, EQ1445_COLLISION_BITS, uint32_t>(seed, dst_ivkey);
+    
+    auto t2_end = std::chrono::high_resolution_clock::now();
+    
+    auto t2_setkey1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2_after_setkey - t2_start);
+    auto t2_merge = std::chrono::duration_cast<std::chrono::milliseconds>(t2_after_merge - t2_after_setkey);
+    auto t2_setkey2 = std::chrono::duration_cast<std::chrono::milliseconds>(t2_end - t2_after_merge);
+    auto t2_total = std::chrono::duration_cast<std::chrono::milliseconds>(t2_end - t2_start);
+    
+    std::cout << "  Input size: " << TEST_SIZE << "\n";
+    std::cout << "  Output size: " << dst_ivkey.size() << "\n";
+    std::cout << "  Time breakdown:\n";
+    std::cout << "    SetIV_Key (source): " << t2_setkey1.count() << " ms\n";
+    std::cout << "    Merge: " << t2_merge.count() << " ms\n";
+    std::cout << "    SetIV_Key (dest): " << t2_setkey2.count() << " ms\n";
+    std::cout << "  Total time: " << t2_total.count() << " ms\n\n";
+
+    // =============================================================================
+    // Verify correctness: output sizes should match
+    // =============================================================================
+    std::cout << "--- Verification ---\n";
+    if (dst_iv.size() == dst_ivkey.size())
+    {
+        std::cout << "  ✓ Output sizes match: " << dst_iv.size() << "\n";
+    }
+    else
+    {
+        std::cerr << "  ✗ Output size mismatch: IV=" << dst_iv.size() 
+                  << " IV_Key=" << dst_ivkey.size() << "\n";
+        std::exit(1);
+    }
+    
+    // Sample verification: check that keys match for first few items
+    bool keys_match = true;
+    for (size_t i = 0; i < std::min<size_t>(10, dst_iv.size()); ++i)
+    {
+        const uint32_t key_iv = getKey24<2>(seed, dst_iv[i]);
+        const uint32_t key_ivkey = dst_ivkey[i].key;
+        if (key_iv != key_ivkey)
+        {
+            std::cerr << "  ✗ Key mismatch at index " << i << ": "
+                      << "IV=0x" << std::hex << key_iv 
+                      << " IV_Key=0x" << key_ivkey << std::dec << "\n";
+            keys_match = false;
+            break;
+        }
+    }
+    if (keys_match)
+    {
+        std::cout << "  ✓ Sample keys match (first 10 items)\n";
+    }
+
+    // =============================================================================
+    // Performance comparison
+    // =============================================================================
+    std::cout << "\n--- Performance Summary ---\n";
+    std::cout << "  IV approach:     " << t1_duration.count() << " ms\n";
+    std::cout << "  IV_Key approach: " << t2_total.count() << " ms\n";
+    
+    if (t2_total.count() < t1_duration.count())
+    {
+        double speedup = static_cast<double>(t1_duration.count()) / t2_total.count();
+        std::cout << "  Speedup: " << std::fixed << std::setprecision(2) 
+                  << speedup << "x faster\n";
+    }
+    else
+    {
+        double slowdown = static_cast<double>(t2_total.count()) / t1_duration.count();
+        std::cout << "  Slowdown: " << std::fixed << std::setprecision(2) 
+                  << slowdown << "x slower\n";
+    }
+    
+    std::cout << "\n  Note: IV_Key trades memory for speed.\n";
+    std::cout << "  - SetIV_Key cost: " << (t2_setkey1.count() + t2_setkey2.count()) 
+              << " ms (" << std::fixed << std::setprecision(1)
+              << (100.0 * (t2_setkey1.count() + t2_setkey2.count()) / t2_total.count()) 
+              << "% of total)\n";
+    std::cout << "  - Merge speedup from cached keys: ";
+    if (t2_merge.count() < t1_duration.count())
+    {
+        double merge_speedup = static_cast<double>(t1_duration.count()) / t2_merge.count();
+        std::cout << merge_speedup << "x\n";
+    }
+    else
+    {
+        std::cout << "slower\n";
+    }
+
+    std::free(mem_iv);
+    std::free(mem_ivkey);
+    std::cout << std::endl;
+}
+
+// =============================================================================
+// Test: SetIV_Key complexity across layers
+// =============================================================================
+void test_setivkey_complexity(int seed)
+{
+    constexpr size_t TEST_SIZE = 10000;
+    std::cout << "=== SetIV_Key Time Complexity Across Layers ===" << std::endl;
+    std::cout << "Testing with " << TEST_SIZE << " items per layer...\n\n";
+
+    const size_t mem_size = TEST_SIZE * sizeof(IVKey5_48);
+    uint8_t *mem = static_cast<uint8_t *>(std::malloc(mem_size));
+    
+    if (!mem)
+    {
+        std::cerr << "Failed to allocate memory!" << std::endl;
+        std::exit(1);
+    }
+
+    // Layer 0: 1 index per IV
+    {
+        Layer0_IVKey layer = init_layer<IVKey0_24>(mem, mem_size);
+        layer.resize(TEST_SIZE);
+        for (size_t i = 0; i < TEST_SIZE; ++i)
+        {
+            layer[i].set_index(0, i);
+        }
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        SetIV_Key_Batch<0, EQ1445_COLLISION_BITS, uint32_t>(seed, layer);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        
+        std::cout << "Layer 0 (1 index):  " << duration.count() << " μs"
+                  << " (" << std::fixed << std::setprecision(2) 
+                  << (duration.count() / 1000.0) << " ms)\n";
+    }
+
+    // Layer 1: 2 indices per IV
+    {
+        Layer1_IVKey layer = init_layer<IVKey1_24>(mem, mem_size);
+        layer.resize(TEST_SIZE);
+        for (size_t i = 0; i < TEST_SIZE; ++i)
+        {
+            layer[i].set_index(0, i * 2);
+            layer[i].set_index(1, i * 2 + 1);
+        }
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        SetIV_Key_Batch<1, EQ1445_COLLISION_BITS, uint32_t>(seed, layer);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        
+        std::cout << "Layer 1 (2 indices): " << duration.count() << " μs"
+                  << " (" << std::fixed << std::setprecision(2) 
+                  << (duration.count() / 1000.0) << " ms)\n";
+    }
+
+    // Layer 2: 4 indices per IV
+    {
+        Layer2_IVKey layer = init_layer<IVKey2_24>(mem, mem_size);
+        layer.resize(TEST_SIZE);
+        for (size_t i = 0; i < TEST_SIZE; ++i)
+        {
+            for (size_t j = 0; j < 4; ++j)
+                layer[i].set_index(j, i * 4 + j);
+        }
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        SetIV_Key_Batch<2, EQ1445_COLLISION_BITS, uint32_t>(seed, layer);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        
+        std::cout << "Layer 2 (4 indices): " << duration.count() << " μs"
+                  << " (" << std::fixed << std::setprecision(2) 
+                  << (duration.count() / 1000.0) << " ms)\n";
+    }
+
+    // Layer 3: 8 indices per IV
+    {
+        Layer3_IVKey layer = init_layer<IVKey3_24>(mem, mem_size);
+        layer.resize(TEST_SIZE);
+        for (size_t i = 0; i < TEST_SIZE; ++i)
+        {
+            for (size_t j = 0; j < 8; ++j)
+                layer[i].set_index(j, i * 8 + j);
+        }
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        SetIV_Key_Batch<3, EQ1445_COLLISION_BITS, uint32_t>(seed, layer);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        
+        std::cout << "Layer 3 (8 indices): " << duration.count() << " μs"
+                  << " (" << std::fixed << std::setprecision(2) 
+                  << (duration.count() / 1000.0) << " ms)\n";
+    }
+
+    // Layer 4: 16 indices per IV
+    {
+        Layer4_IVKey layer = init_layer<IVKey4_48>(mem, mem_size);
+        layer.resize(TEST_SIZE);
+        for (size_t i = 0; i < TEST_SIZE; ++i)
+        {
+            for (size_t j = 0; j < 16; ++j)
+                layer[i].set_index(j, i * 16 + j);
+        }
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        SetIV_Key_Batch<4, EQ1445_FINAL_BITS, uint64_t>(seed, layer);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        
+        std::cout << "Layer 4 (16 indices): " << duration.count() << " μs"
+                  << " (" << std::fixed << std::setprecision(2) 
+                  << (duration.count() / 1000.0) << " ms)\n";
+    }
+
+    std::cout << "\nObservation: SetIV_Key time grows linearly with number of indices (2^Layer)\n";
+    std::cout << "Each index requires one Blake2b hash computation.\n";
+
+    std::free(mem);
+    std::cout << std::endl;
+}
+
 } // namespace
 
 int main()
@@ -274,6 +570,16 @@ int main()
     // =========================================================================
     std::cout << "=== IV0 Sort Consistency Test ===" << std::endl;
     test_iv0_sort_consistency(seed);
+
+    // =========================================================================
+    // Test: IV vs IV_Key performance comparison
+    // =========================================================================
+    test_ivkey_vs_iv_performance(seed);
+
+    // =========================================================================
+    // Test: SetIV_Key time complexity across layers
+    // =========================================================================
+    test_setivkey_complexity(seed);
 
     std::cout << "All tests passed!" << std::endl;
     return 0;

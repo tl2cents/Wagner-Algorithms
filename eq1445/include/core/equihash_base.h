@@ -247,6 +247,89 @@ inline IndexVector<INDEX_BYTES, LAYER + 1> merge_iv(
     return result;
 }
 
+// ============================================================================
+// Index Vector with Key (IV_Key) - Stores indices + precomputed collision key
+// ============================================================================
+
+template <std::size_t INDEX_BYTES, std::size_t LAYER, typename KeyType>
+struct IndexVectorKey
+{
+    static constexpr std::size_t NumIndices = (1ULL << LAYER);
+    static constexpr std::size_t TotalBytes = INDEX_BYTES * NumIndices;
+    
+    uint8_t indices[TotalBytes];
+    KeyType key;  // Precomputed collision key
+    
+    IndexVectorKey() = default;
+    
+    // Get the k-th index (same as IndexVector)
+    inline size_t get_index(size_t k) const
+    {
+        assert(k < NumIndices);
+        const uint8_t *ptr = indices + k * INDEX_BYTES;
+        if constexpr (INDEX_BYTES == 4)
+        {
+            uint32_t v32;
+            std::memcpy(&v32, ptr, 4);
+            return v32;
+        }
+        else if constexpr (INDEX_BYTES == 8)
+        {
+            uint64_t v64;
+            std::memcpy(&v64, ptr, 8);
+            return static_cast<size_t>(v64);
+        }
+        else
+        {
+            size_t value = 0;
+            for (size_t i = 0; i < INDEX_BYTES; ++i)
+            {
+                value |= static_cast<size_t>(ptr[i]) << (8 * i);
+            }
+            return value;
+        }
+    }
+    
+    // Set the k-th index (same as IndexVector)
+    inline void set_index(size_t k, size_t v)
+    {
+        assert(k < NumIndices);
+        uint8_t *ptr = indices + k * INDEX_BYTES;
+        if constexpr (INDEX_BYTES == 4)
+        {
+            uint32_t v32 = static_cast<uint32_t>(v);
+            std::memcpy(ptr, &v32, 4);
+        }
+        else if constexpr (INDEX_BYTES == 8)
+        {
+            uint64_t v64 = static_cast<uint64_t>(v);
+            std::memcpy(ptr, &v64, 8);
+        }
+        else
+        {
+            for (size_t i = 0; i < INDEX_BYTES; ++i)
+            {
+                ptr[i] = static_cast<uint8_t>((v >> (8 * i)) & 0xFF);
+            }
+        }
+    }
+};
+
+// Merge two IV_Keys from layer i to create an IV_Key for layer i+1
+// Note: The result's key field is NOT computed - user must call SetIV_Key after merge
+template <std::size_t INDEX_BYTES, std::size_t LAYER, typename KeyType>
+inline IndexVectorKey<INDEX_BYTES, LAYER + 1, KeyType> merge_ivkey(
+    const IndexVectorKey<INDEX_BYTES, LAYER, KeyType> &ivkey_left,
+    const IndexVectorKey<INDEX_BYTES, LAYER, KeyType> &ivkey_right)
+{
+    IndexVectorKey<INDEX_BYTES, LAYER + 1, KeyType> result;
+    constexpr std::size_t half_bytes = INDEX_BYTES * (1ULL << LAYER);
+    std::memcpy(result.indices, ivkey_left.indices, half_bytes);
+    std::memcpy(result.indices + half_bytes, ivkey_right.indices, half_bytes);
+    // Note: result.key is NOT set here - must be computed later by SetIV_Key
+    return result;
+}
+
 namespace equihash
 {
 

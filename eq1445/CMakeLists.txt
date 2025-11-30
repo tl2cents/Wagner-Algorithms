@@ -194,6 +194,16 @@ add_executable(verify_size test/verify_size.cpp ${TEST_COMMON})
 apply_common_opts(verify_size)
 add_test(NAME verify_size COMMAND verify_size)
 
+# Test: test_iv_optimization - Verify IV merge correctness and performance
+add_executable(test_iv_optimization test/test_iv_optimization.cpp ${TEST_COMMON})
+apply_common_opts(test_iv_optimization)
+add_test(NAME test_iv_optimization COMMAND test_iv_optimization)
+
+# Test: test_setivkey_perf - Measure SetIV_Key performance vs fill_layer0
+add_executable(test_setivkey_perf test/test_setivkey_perf.cpp ${TEST_COMMON})
+apply_common_opts(test_setivkey_perf)
+add_test(NAME test_setivkey_perf COMMAND test_setivkey_perf)
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER}")
 message(STATUS "ENABLE_AVX2=${ENABLE_AVX2}, ENABLE_LTO=${ENABLE_LTO}, USE_LLD=${USE_LLD}")

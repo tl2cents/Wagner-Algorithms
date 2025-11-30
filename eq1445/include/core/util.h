@@ -184,6 +184,26 @@ inline ItemT _compute_ith_item(int seed, size_t leaf_index)
     return item;
 }
 
+template <typename ParamsT, typename ItemT, typename HasherT>
+inline ItemT _compute_ith_item_fast(HasherT& H, size_t leaf_index)
+{
+    static_assert((ParamsT::N % 8) == 0, "Equihash N must be divisible by 8 for byte-aligned leaves");
+    constexpr size_t HASH_BYTES = ParamsT::N / 8;
+    static_assert(ItemXorSize<ItemT> == HASH_BYTES,
+                  "ItemT XOR size must match Equihash N/8 bytes");
+
+    const uint32_t pair_idx = static_cast<uint32_t>(leaf_index / 2);
+    const bool second = (leaf_index & 1) != 0;
+
+    uint8_t out[ZcashEquihashHasher::OUT_LEN];
+    H.hash_index(pair_idx, out);
+
+    ItemT item{};
+    const size_t offset = second ? HASH_BYTES : 0;
+    std::memcpy(item.XOR, out + offset, HASH_BYTES);
+    return item;
+}
+
 inline Item0 compute_ith_item(int seed, size_t leaf_index)
 {
     return _compute_ith_item<EquihashParams, Item0>(seed, leaf_index);

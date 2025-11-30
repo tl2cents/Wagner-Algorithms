@@ -76,6 +76,21 @@ using Layer3_IV = LayerVec<IV3>;
 using Layer4_IV = LayerVec<IV4>;
 using Layer5_IV = LayerVec<IV5>;
 
+// IV_Key types: Index Vector with precomputed collision keys
+using IVKey0_24 = IndexVectorKey<EquihashParams::kIndexBytes, 0, uint32_t>;  // 24-bit key
+using IVKey1_24 = IndexVectorKey<EquihashParams::kIndexBytes, 1, uint32_t>;
+using IVKey2_24 = IndexVectorKey<EquihashParams::kIndexBytes, 2, uint32_t>;
+using IVKey3_24 = IndexVectorKey<EquihashParams::kIndexBytes, 3, uint32_t>;
+using IVKey4_48 = IndexVectorKey<EquihashParams::kIndexBytes, 4, uint64_t>;  // 48-bit key for final layer
+using IVKey5_48 = IndexVectorKey<EquihashParams::kIndexBytes, 5, uint64_t>;
+
+using Layer0_IVKey = LayerVec<IVKey0_24>;
+using Layer1_IVKey = LayerVec<IVKey1_24>;
+using Layer2_IVKey = LayerVec<IVKey2_24>;
+using Layer3_IVKey = LayerVec<IVKey3_24>;
+using Layer4_IVKey = LayerVec<IVKey4_48>;
+using Layer5_IVKey = LayerVec<IVKey5_48>;
+
 using IPDiskMeta = equihash::IPDiskMetaT<Item_IP>;
 using IPDiskManifest = equihash::IPDiskManifestT<Item_IP, 4>; // Stores IP1-IP4 on disk
 

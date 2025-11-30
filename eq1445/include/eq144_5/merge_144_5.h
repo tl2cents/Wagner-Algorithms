@@ -289,50 +289,243 @@ inline void sort24_IV2(LayerIV<2> &layer, int seed) { sort24_IV<2>(layer, seed);
 inline void sort24_IV3(LayerIV<3> &layer, int seed) { sort24_IV<3>(layer, seed); }
 inline void sort48_IV4(LayerIV<4> &layer, int seed) { sort48_IV<4>(layer, seed); }
 
+// Optimized merge_iv_layer using CachedHasher
+template <typename SrcIV, typename DstIV,
+          DstIV (*merge_iv_func)(const SrcIV &, const SrcIV &),
+          size_t Layer, size_t KeyBits, typename KeyType,
+          bool discard_zero,
+          bool (*is_zero_func)(int, const DstIV &) = nullptr,
+          bool is_last = false>
+inline void merge_iv_layer_optimized(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &dst_arr, int seed)
+{
+    static_assert(!discard_zero || is_zero_func != nullptr,
+                  "Zero-check function required when discarding zeros");
+
+    if (src_arr.empty())
+        return;
+
+    // Initialize Hasher once
+    uint8_t headernonce[140];
+    std::memset(headernonce, 0, sizeof(headernonce));
+    uint32_t *nonce_ptr = reinterpret_cast<uint32_t *>(headernonce + 108);
+    *nonce_ptr = seed;
+    uint8_t dummy_nonce[32];
+    std::memset(dummy_nonce, 0, sizeof(dummy_nonce));
+
+    ZcashEquihashHasher H;
+    H.init_midstate(headernonce, sizeof(headernonce), dummy_nonce,
+                    EquihashParams::N,
+                    EquihashParams::K);
+    
+    CachedHasher CH(H);
+
+    // Sort source array by collision key (using cached hasher)
+    sort_iv_by_key_fast<Layer, KeyBits>(src_arr, CH);
+
+    const size_t N = src_arr.size();
+    size_t avail_dst = dst_arr.capacity() - dst_arr.size();
+
+    // For discard_zero mode, we need a skip buffer to mark zero-pair items
+    std::vector<uint8_t> skip_buf;
+    if constexpr (discard_zero)
+    {
+        skip_buf.reserve(GROUP_BOUND);
+    }
+
+    size_t i = 0;
+    while (i < N)
+    {
+        // Find group with same collision key
+        const size_t group_start = i;
+        const auto key0 = get_iv_key_bits_fast<Layer, KeyBits>(CH, src_arr[group_start]);
+        i++;
+        while (i < N && get_iv_key_bits_fast<Layer, KeyBits>(CH, src_arr[i]) == key0)
+            ++i;
+        const size_t group_end = i;
+        const size_t group_size = group_end - group_start;
+
+        if constexpr (discard_zero)
+        {
+            // Mark items that produce zero XOR when merged
+            skip_buf.assign(group_size, 0);
+            for (size_t j1 = group_start; j1 < group_end; ++j1)
+            {
+                if (skip_buf[j1 - group_start])
+                    continue;
+                for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
+                {
+                    if (skip_buf[j2 - group_start])
+                        continue;
+                    DstIV out = merge_iv_func(src_arr[j1], src_arr[j2]);
+                    if (is_zero_func(seed, out))
+                    {
+                        skip_buf[j2 - group_start] = 1;
+                        continue;
+                    }
+                    if (dst_arr.size() >= avail_dst)
+                        break;
+                    dst_arr.push_back(out);
+                }
+                if (dst_arr.size() >= avail_dst)
+                    break;
+            }
+        }
+        else
+        {
+            // Skip large groups in final merge to avoid explosion
+            if constexpr (is_last)
+            {
+                if (group_size > 3)
+                    continue;
+            }
+
+            // Generate all pairs within the group
+            for (size_t j1 = group_start; j1 < group_end; ++j1)
+            {
+                for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
+                {
+                    if (dst_arr.size() >= avail_dst)
+                        break;
+                    dst_arr.push_back(merge_iv_func(src_arr[j1], src_arr[j2]));
+                }
+                if (dst_arr.size() >= avail_dst)
+                    break;
+            }
+        }
+
+        // Check if destination is full
+        if (dst_arr.size() >= avail_dst)
+            break;
+    }
+}
+
 // IV merge wrapper functions
 inline void merge0_iv_inplace(Layer0_IV &s, Layer1_IV &d, int seed)
 {
-    merge_iv_layer_generic<IV0, IV1,
-                             merge_iv0, sort24_IV0, false,
-                             uint32_t, getKey24_IV0,
-                             static_cast<bool (*)(int, const IV1 &)>(nullptr)>(s, d, seed);
+    merge_iv_layer_optimized<IV0, IV1, merge_iv0, 0, EQ1445_COLLISION_BITS, uint32_t, false>(s, d, seed);
 }
 inline void merge1_iv_layer(Layer1_IV &s, Layer2_IV &d, int seed)
 {
-    merge_iv_layer_generic<IV1, IV2,
-                             merge_iv1, sort24_IV1, false,
-                             uint32_t, getKey24_IV1,
-                             static_cast<bool (*)(int, const IV2 &)>(nullptr)>(s, d, seed);
+    merge_iv_layer_optimized<IV1, IV2, merge_iv1, 1, EQ1445_COLLISION_BITS, uint32_t, false>(s, d, seed);
 }
 inline void merge2_iv_layer(Layer2_IV &s, Layer3_IV &d, int seed)
 {
-    merge_iv_layer_generic<IV2, IV3,
-                             merge_iv2, sort24_IV2, false,
-                             uint32_t, getKey24_IV2,
-                             static_cast<bool (*)(int, const IV3 &)>(nullptr)>(s, d, seed);
+    merge_iv_layer_optimized<IV2, IV3, merge_iv2, 2, EQ1445_COLLISION_BITS, uint32_t, false>(s, d, seed);
 }
 inline void merge3_iv_layer(Layer3_IV &s, Layer4_IV &d, int seed)
 {
-    merge_iv_layer_generic<IV3, IV4,
-                             merge_iv3, sort24_IV3, false,
-                             uint32_t, getKey24_IV3,
-                             static_cast<bool (*)(int, const IV4 &)>(nullptr)>(s, d, seed);
+    merge_iv_layer_optimized<IV3, IV4, merge_iv3, 3, EQ1445_COLLISION_BITS, uint32_t, false>(s, d, seed);
 }
 inline void merge4_iv_layer(Layer4_IV &s, Layer5_IV &d, int seed)
 {
-    merge_iv_layer_generic<IV4, IV5,
-                             merge_iv4, sort48_IV4, false,
-                             uint64_t, getKey48_IV4,
-                             static_cast<bool (*)(int, const IV5 &)>(nullptr),
-                             true>(s, d, seed);
+    merge_iv_layer_optimized<IV4, IV5, merge_iv4, 4, EQ1445_FINAL_BITS, uint64_t, false, nullptr, true>(s, d, seed);
 }
 
 // Template wrapper for indexed IV merge access
 template<size_t I>
 inline void merge_iv_layer(LayerIV<I> &s, LayerIV<I+1> &d, int seed) {
-    if constexpr (I == 0) merge0_iv_layer(s, d, seed);
+    if constexpr (I == 0) merge0_iv_inplace(s, d, seed);
     else if constexpr (I == 1) merge1_iv_layer(s, d, seed);
     else if constexpr (I == 2) merge2_iv_layer(s, d, seed);
     else if constexpr (I == 3) merge3_iv_layer(s, d, seed);
     else if constexpr (I == 4) merge4_iv_layer(s, d, seed);
+}
+
+// =============================================================================
+// IV_Key merge helpers for Equihash(144,5)
+// =============================================================================
+
+// merge_ivkey wrapper for specific layers
+inline IVKey1_24 merge_ivkey0(const IVKey0_24 &a, const IVKey0_24 &b)
+{
+    return merge_ivkey<EquihashParams::kIndexBytes, 0, uint32_t>(a, b);
+}
+inline IVKey2_24 merge_ivkey1(const IVKey1_24 &a, const IVKey1_24 &b)
+{
+    return merge_ivkey<EquihashParams::kIndexBytes, 1, uint32_t>(a, b);
+}
+inline IVKey3_24 merge_ivkey2(const IVKey2_24 &a, const IVKey2_24 &b)
+{
+    return merge_ivkey<EquihashParams::kIndexBytes, 2, uint32_t>(a, b);
+}
+inline IVKey4_48 merge_ivkey3(const IVKey3_24 &a, const IVKey3_24 &b)
+{
+    // Note: KeyType changes from uint32_t to uint64_t at Layer 4
+    IVKey4_48 result;
+    constexpr std::size_t half_bytes = EquihashParams::kIndexBytes * (1ULL << 3);  // 8 indices * 4 bytes
+    std::memcpy(result.indices, a.indices, half_bytes);
+    std::memcpy(result.indices + half_bytes, b.indices, half_bytes);
+    // result.key is NOT set - must be computed later by SetIV_Key
+    return result;
+}
+inline IVKey5_48 merge_ivkey4(const IVKey4_48 &a, const IVKey4_48 &b)
+{
+    return merge_ivkey<EquihashParams::kIndexBytes, 4, uint64_t>(a, b);
+}
+
+// Key extraction wrappers for IV_Key (just return stored key, no computation)
+inline uint32_t getKey24_IVKey0(int seed, const IVKey0_24 &ivkey) { return getKey_IVKey<0>(seed, ivkey); }
+inline uint32_t getKey24_IVKey1(int seed, const IVKey1_24 &ivkey) { return getKey_IVKey<1>(seed, ivkey); }
+inline uint32_t getKey24_IVKey2(int seed, const IVKey2_24 &ivkey) { return getKey_IVKey<2>(seed, ivkey); }
+inline uint32_t getKey24_IVKey3(int seed, const IVKey3_24 &ivkey) { return getKey_IVKey<3>(seed, ivkey); }
+inline uint64_t getKey48_IVKey4(int seed, const IVKey4_48 &ivkey) { return getKey_IVKey<4>(seed, ivkey); }
+
+// Sort wrappers for IV_Key (uses precomputed keys)
+inline void sort24_IVKey0(Layer0_IVKey &layer, int seed) { sort24_IVKey<0>(layer, seed); }
+inline void sort24_IVKey1(Layer1_IVKey &layer, int seed) { sort24_IVKey<1>(layer, seed); }
+inline void sort24_IVKey2(Layer2_IVKey &layer, int seed) { sort24_IVKey<2>(layer, seed); }
+inline void sort24_IVKey3(Layer3_IVKey &layer, int seed) { sort24_IVKey<3>(layer, seed); }
+inline void sort48_IVKey4(Layer4_IVKey &layer, int seed) { sort48_IVKey<4>(layer, seed); }
+
+// IV_Key merge wrapper functions
+inline void merge0_ivkey_layer(Layer0_IVKey &s, Layer1_IVKey &d, int seed)
+{
+    merge_ivkey_layer_generic<IVKey0_24, IVKey1_24,
+                              merge_ivkey0, sort24_IVKey0, false,
+                              uint32_t, getKey24_IVKey0,
+                              static_cast<bool (*)(int, const IVKey1_24 &)>(nullptr)>(s, d, seed);
+}
+inline void merge1_ivkey_layer(Layer1_IVKey &s, Layer2_IVKey &d, int seed)
+{
+    merge_ivkey_layer_generic<IVKey1_24, IVKey2_24,
+                              merge_ivkey1, sort24_IVKey1, false,
+                              uint32_t, getKey24_IVKey1,
+                              static_cast<bool (*)(int, const IVKey2_24 &)>(nullptr)>(s, d, seed);
+}
+inline void merge2_ivkey_layer(Layer2_IVKey &s, Layer3_IVKey &d, int seed)
+{
+    merge_ivkey_layer_generic<IVKey2_24, IVKey3_24,
+                              merge_ivkey2, sort24_IVKey2, false,
+                              uint32_t, getKey24_IVKey2,
+                              static_cast<bool (*)(int, const IVKey3_24 &)>(nullptr)>(s, d, seed);
+}
+inline void merge3_ivkey_layer(Layer3_IVKey &s, Layer4_IVKey &d, int seed)
+{
+    merge_ivkey_layer_generic<IVKey3_24, IVKey4_48,
+                              merge_ivkey3, sort24_IVKey3, false,
+                              uint32_t, getKey24_IVKey3,
+                              static_cast<bool (*)(int, const IVKey4_48 &)>(nullptr)>(s, d, seed);
+}
+inline void merge4_ivkey_layer(Layer4_IVKey &s, Layer5_IVKey &d, int seed)
+{
+    merge_ivkey_layer_generic<IVKey4_48, IVKey5_48,
+                              merge_ivkey4, sort48_IVKey4, false,
+                              uint64_t, getKey48_IVKey4,
+                              static_cast<bool (*)(int, const IVKey5_48 &)>(nullptr),
+                              true>(s, d, seed);
+}
+
+// Template wrapper for indexed IV_Key merge access
+template<size_t I>
+inline void merge_ivkey_layer(Layer0_IVKey &s0, Layer1_IVKey &d1,
+                              Layer1_IVKey &s1, Layer2_IVKey &d2,
+                              Layer2_IVKey &s2, Layer3_IVKey &d3,
+                              Layer3_IVKey &s3, Layer4_IVKey &d4,
+                              Layer4_IVKey &s4, Layer5_IVKey &d5,
+                              int seed) {
+    if constexpr (I == 0) merge0_ivkey_layer(s0, d1, seed);
+    else if constexpr (I == 1) merge1_ivkey_layer(s1, d2, seed);
+    else if constexpr (I == 2) merge2_ivkey_layer(s2, d3, seed);
+    else if constexpr (I == 3) merge3_ivkey_layer(s3, d4, seed);
+    else if constexpr (I == 4) merge4_ivkey_layer(s4, d5, seed);
 }
