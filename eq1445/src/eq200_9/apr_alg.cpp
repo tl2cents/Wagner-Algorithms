@@ -2,6 +2,8 @@
 #include "eq200_9/merge_200_9.h"
 #include "eq200_9/sort_200_9.h"
 #include "eq200_9/util_200_9.h"
+
+#include <cassert>
 #include <cstring>
 #include <cstdlib>
 #include <fstream>
@@ -13,44 +15,39 @@
 
 // verbose-guarded logging helper
 #define IFV if (g_verbose)
-// ------------------- Tunables -------------------
 
-// Compatibility constants used elsewhere in the codebase
 uint64_t MAX_IP_MEM_BYTES = static_cast<uint64_t>(MAX_LIST_SIZE) * sizeof(Item_IP);
 uint64_t MAX_ITEM_MEM_BYTES = static_cast<uint64_t>(MAX_LIST_SIZE) * sizeof(Item0_IDX);
-// We can use a little less memory, i.e., `MAX_LIST_SIZE * sizeof(Item0_IDX)` but it will complicate memory management and other unconveniences.
-// The peak memory of performing merge_7_ip_inplace is Layer7 + IP6 + IP7 + IP8 in our impl, i.e., the following peak memory to keep things simple (extra memory of 2MB)
-uint64_t MAX_MEM_BYTES_APR5 = static_cast<uint64_t>(MAX_LIST_SIZE) * sizeof(Item7_IDX) +
-                              3ull * static_cast<uint64_t>(MAX_LIST_SIZE) * sizeof(Item_IP);
-// The same aplies for advanced_cip_pr_4
-// inline uint64_t MAX_MEM_BYTES_APR4 = MAX_LIST_SIZE * sizeof(Item7_IDX) + 4 * MAX_LIST_SIZE * sizeof(Item_IP);
-
-// Note: Our implementation wastes some memory for simplicity. This is why our advanced cip-pr algorithm has a higher peak memory usage than the cip-pr algorithm. For example, we stores index as 3 bytes (> 21 bits). The actual memory usage can be slightly reduced by more complex memory management.
 
 SortAlgo g_sort_algo = SortAlgo::KXSORT;
 bool g_verbose = true;
 
-/**
- * @brief Recover the Index Poiter (IP) layer at height h.
- *
- * This function reconstructs the IP layer at a specific height by recomputing
- * the Wagner algorithm layers from scratch. It's used in post-retrieval algorithms
- * where IP layers are not stored in memory during the forward pass. The proceeding
- * path is: L1 -> L2 -> ... -> L(h-1) -> L(h-1) with index -> IP(h)
- *
- * @param h The target layer height (1-9) for which to recover IP
- * @param seed The random seed used to generate initial layer 0
- * @param base Pointer to pre-allocated memory buffer for layer storage
- * @return Layer_IP The recovered Index Pair layer at height h
- *
- * Memory layout:
- * - Reuses the same memory buffer `base` for all intermediate layers
- * - Each merge operation overwrites the previous layer to save memory
- * - Final IP layer is stored in `out_IP` using the same base buffer
- */
+const size_t ItemSizes[9] = {
+    EquihashParams::kLayer0XorBytes,
+    EquihashParams::kLayer1XorBytes,
+    EquihashParams::kLayer2XorBytes,
+    EquihashParams::kLayer3XorBytes,
+    EquihashParams::kLayer4XorBytes,
+    EquihashParams::kLayer5XorBytes,
+    EquihashParams::kLayer6XorBytes,
+    EquihashParams::kLayer7XorBytes,
+    EquihashParams::kLayer8XorBytes};
+
+const size_t ItemIDXSizes[9] = {
+    EquihashParams::kLayer0XorBytes + EquihashParams::kIndexBytes,
+    EquihashParams::kLayer1XorBytes + EquihashParams::kIndexBytes,
+    EquihashParams::kLayer2XorBytes + EquihashParams::kIndexBytes,
+    EquihashParams::kLayer3XorBytes + EquihashParams::kIndexBytes,
+    EquihashParams::kLayer4XorBytes + EquihashParams::kIndexBytes,
+    EquihashParams::kLayer5XorBytes + EquihashParams::kIndexBytes,
+    EquihashParams::kLayer6XorBytes + EquihashParams::kIndexBytes,
+    EquihashParams::kLayer7XorBytes + EquihashParams::kIndexBytes,
+    EquihashParams::kLayer8XorBytes + EquihashParams::kIndexBytes};
+
 inline Layer_IP recover_IP(int h, int seed, uint8_t *base)
 {
-    // Initialize all possible layer buffers (only used up to layer h)
+    assert(h >= 1 && h <= 9 && "recover_IP only supports layers 1-9 for (200,9)");
+
     Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
     Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
     Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
@@ -62,23 +59,20 @@ inline Layer_IP recover_IP(int h, int seed, uint8_t *base)
     Layer8 L8 = init_layer<Item8>(base, MAX_LIST_SIZE * sizeof(Item8));
     Layer_IP out_IP = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
 
-    // Special case: h=1, generate L0 with indices and directly produce IP1
     if (h == 1)
     {
         Layer0_IDX L0_IDX = init_layer<Item0_IDX>(base, MAX_LIST_SIZE * sizeof(Item0_IDX));
-        fill_layer0<Layer0_IDX>(L0_IDX, seed);
-        set_index_batch(L0_IDX); // Set indices for IP tracking
+        fill_layer0(L0_IDX, seed);
+        set_index_batch(L0_IDX);
         merge0_inplace_for_ip(L0_IDX, out_IP);
         clear_vec(L0_IDX);
         return out_IP;
     }
 
-    // For h >= 2: start with non-indexed Layer0
-    fill_layer0<Layer0>(L0, seed);
+    fill_layer0(L0, seed);
     merge0_inplace(L0, L1);
-    clear_vec(L0); // Free memory immediately after use
+    clear_vec(L0);
 
-    // h=2: convert L1 to indexed and generate IP2
     if (h == 2)
     {
         Layer1_IDX L1_IDX = expand_layer_to_idx_inplace<Item1, Item1_IDX>(L1);
@@ -87,7 +81,6 @@ inline Layer_IP recover_IP(int h, int seed, uint8_t *base)
         return out_IP;
     }
 
-    // Continue merging up to layer h-1, then convert to indexed and generate IP
     merge1_inplace(L1, L2);
     clear_vec(L1);
     if (h == 3)
@@ -148,7 +141,6 @@ inline Layer_IP recover_IP(int h, int seed, uint8_t *base)
         return out_IP;
     }
 
-    // h=9: final layer
     merge7_inplace(L7, L8);
     clear_vec(L7);
     Layer8_IDX L8_IDX = expand_layer_to_idx_inplace<Item8, Item8_IDX>(L8);
@@ -157,46 +149,20 @@ inline Layer_IP recover_IP(int h, int seed, uint8_t *base)
     return out_IP;
 }
 
-/**
- * @brief Plain CIP (single-Chain with Index Pointer) algorithm - stores all IP layers in memory
- *
- * This is the baseline single-chain Wagner algorithm implementation that stores
- * all Index Pointer (IP) layers in memory during the forward pass. It provides
- * the fastest solution retrieval but uses the most memory.
- *
- * Algorithm flow:
- * 1. Forward pass: Generate layers L0 -> L1 -> ... -> L8 -> IP9
- *    - Each merge operation produces both the next layer and an IP array
- *    - IP arrays track which pairs from previous layer were merged
- * 2. Solution expansion: If solutions exist (IP9 non-empty), expand backwards
- *    - Use stored IP arrays to reconstruct the full solution tree
- *
- * @param seed Random seed for generating initial layer L0
- * @param base Optional pre-allocated memory buffer. If nullptr, allocates internally.
- * @return std::vector<Solution> All non-trivial solutions found
- *
- * Memory layout (total = MAX_ITEM_MEM_BYTES + 8 * MAX_IP_MEM_BYTES):
- * - [0, MAX_ITEM_MEM_BYTES): Layer storage (L0-L8, reused for each layer)
- * - [MAX_ITEM_MEM_BYTES, MAX_ITEM_MEM_BYTES + 8*MAX_IP_MEM_BYTES): IP1-IP8 storage
- * - IP9 overlays on the layer storage area after L8 is no longer needed
- *
- * Note: if pre-allocated memory buffer is provided (base != nullptr), it must
- * allocate at least `MAX_ITEM_MEM_BYTES + 8 * MAX_IP_MEM_BYTES` bytes.
- *
- */
-std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr)
+std::vector<Solution> plain_cip(int seed, uint8_t *base)
 {
-    // Total memory: one layer buffer + 8 IP arrays
-    size_t total_mem = MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES * 8;
+    const size_t total_mem = MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES * 8; // K-1 = 8
     bool own_base = false;
     if (!base)
     {
         base = static_cast<uint8_t *>(std::malloc(total_mem));
         own_base = true;
     }
-    // Warning: Please ensure that the provided base memory is at least `total_mem` bytes, otherwise corrupted memory access may occur.
+    IFV
+    {
+        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
+    }
 
-    // Initialize layer buffers (reuse same memory for all layers)
     Layer0_IDX L0 = init_layer<Item0_IDX>(base, MAX_LIST_SIZE * sizeof(Item0_IDX));
     Layer1_IDX L1 = init_layer<Item1_IDX>(base, MAX_LIST_SIZE * sizeof(Item1_IDX));
     Layer2_IDX L2 = init_layer<Item2_IDX>(base, MAX_LIST_SIZE * sizeof(Item2_IDX));
@@ -207,8 +173,7 @@ std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr)
     Layer7_IDX L7 = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
     Layer8_IDX L8 = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
 
-    // Initialize IP storage (each IP array gets its own dedicated memory)
-    Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES); // Reuse layer buffer after L8
+    Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
     Layer_IP IP8 = init_layer<Item_IP>(base + MAX_ITEM_MEM_BYTES + 0 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
     Layer_IP IP7 = init_layer<Item_IP>(base + MAX_ITEM_MEM_BYTES + 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
     Layer_IP IP6 = init_layer<Item_IP>(base + MAX_ITEM_MEM_BYTES + 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
@@ -219,18 +184,12 @@ std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr)
     Layer_IP IP1 = init_layer<Item_IP>(base + MAX_ITEM_MEM_BYTES + 7 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
 
     std::vector<Solution> solutions;
-    IFV
-    {
-        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
-    }
 
-    // Forward pass: Generate all layers and store all IP arrays
-    // Pattern: fill/merge -> set_index -> clear previous layer -> repeat
     fill_layer0(L0, seed);
-    set_index_batch(L0);            // Assign unique indices to L0 items for tracking
-    merge0_ip_inplace(L0, L1, IP1); // Merge L0 pairs -> L1, store pairs in IP1
+    set_index_batch(L0);
+    merge0_ip_inplace(L0, L1, IP1);
     set_index_batch(L1);
-    clear_vec(L0); // Free L0 memory (reuse for next layer)
+    clear_vec(L0);
 
     merge1_ip_inplace(L1, L2, IP2);
     set_index_batch(L2);
@@ -260,7 +219,7 @@ std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr)
     set_index_batch(L8);
     clear_vec(L7);
 
-    merge8_inplace_for_ip(L8, IP9); // Final merge to get solutions
+    merge8_inplace_for_ip(L8, IP9);
     clear_vec(L8);
 
     IFV
@@ -276,11 +235,8 @@ std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr)
         std::cout << "Layer 1 IP size: " << IP1.size() << std::endl;
     }
 
-    // Backward pass: Expand solutions if any exist
-    if (IP9.size() != 0)
+    if (!IP9.empty())
     {
-        // Expand from top to bottom: IP9 -> IP8 -> ... -> IP1
-        // Each expansion step traces back one level in the solution tree
         expand_solutions(solutions, IP9);
         expand_solutions(solutions, IP8);
         expand_solutions(solutions, IP7);
@@ -290,7 +246,7 @@ std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr)
         expand_solutions(solutions, IP3);
         expand_solutions(solutions, IP2);
         expand_solutions(solutions, IP1);
-        filter_trivial_solutions(solutions); // Remove solutions with repeated indices
+        filter_trivial_solutions(solutions);
     }
 
     if (own_base)
@@ -300,257 +256,11 @@ std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr)
     return solutions;
 }
 
-/**
- * @brief Plain CIP with Post-Retrieval (CIP-PR) - minimizes memory by recomputing IP layers on demand
- *
- * This algorithm trades computation time for memory efficiency by using the "post-retrieval" strategy:
- * Instead of storing all IP layers during the forward pass, it only computes IP9 initially.
- * If solutions exist, it recovers each IP layer (IP8 down to IP1) on-demand by recomputing
- * the Wagner algorithm from scratch for each layer.
- *
- * Algorithm flow:
- * 1. Forward pass: Compute only IP9 (solutions at the top layer)
- *    - Internally recomputes L0 -> L1 -> ... -> L8 to get IP9
- * 2. Post-retrieval: If IP9 non-empty, recover each IP layer sequentially
- *    - For each h from 8 down to 1: recover_IP(h) recomputes L0 -> L(h-1) -> IP(h)
- *    - Each recovery pass reuses the same memory buffer
- *    - Solution expansion: Expand solutions backwards using recovered IP layer: IP(h)
- *
- * @param seed Random seed for generating initial layer L0
- * @param base Optional pre-allocated memory buffer. If nullptr, allocates internally.
- * @return std::vector<Solution> All non-trivial solutions found
- *
- * Memory layout (total = MAX_ITEM_MEM_BYTES):
- * - [0, MAX_ITEM_MEM_BYTES): Single reusable buffer for all layer computations
- * - Each recover_IP() call reuses this buffer for intermediate layers
- * - Final IP layers (IP9, IP8, ..., IP1) are computed one at a time and consumed immediately
- *
- * Note: if pre-allocated memory buffer is provided (base != nullptr), it must
- * allocate at least `MAX_ITEM_MEM_BYTES` bytes.
- */
-std::vector<Solution> plain_cip_pr(int seed, uint8_t *base = nullptr)
-{
-    size_t total_mem = MAX_ITEM_MEM_BYTES;
-    bool own_base = false;
-    if (base == nullptr)
-    {
-        base = static_cast<uint8_t *>(std::malloc(total_mem));
-        own_base = true;
-    }
-    // Warning: Please ensure that the provided base memory is at least `total_mem` bytes, otherwise corrupted memory access may occur.
-    IFV
-    {
-        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
-    }
-    std::vector<Solution> solutions;
-
-    // Step 1: Compute IP9 (top-level solutions) via recover_IP
-    // This internally computes L0 -> L1 -> ... -> L8 -> IP9
-    Layer_IP IP9 = recover_IP(9, seed, base);
-    IFV { std::cout << "Layer " << 9 << " IP size: " << IP9.size() << std::endl; }
-
-    // Step 2: If solutions exist, recover all IP layers and expand backwards
-    if (IP9.size() != 0)
-    {
-        // Expand IP9 first to get layer-8 indices
-        expand_solutions(solutions, IP9);
-
-        // Recover and expand each IP layer from h=8 down to h=1
-        // Each recover_IP call recomputes L0 -> L(h-1) -> IPh using the same buffer
-        for (int h = 8; h >= 1; --h)
-        {
-            Layer_IP IPh = recover_IP(h, seed, base); // Recompute IPh on-demand
-            IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
-            expand_solutions(solutions, IPh); // Expand solutions using IPh
-        }
-        IFV
-        {
-            if (solutions.size() > 1024)
-            {
-                std::cout << "Warning: Large number of solutions found: " << solutions.size() << std::endl;
-            }
-        }
-        filter_trivial_solutions(solutions); // Remove solutions with repeated indices
-    }
-    if (own_base)
-    {
-        std::free(base);
-    }
-    return solutions;
-}
-
-/**
- * @brief Advanced CIP with Post-Retrieval (Advanced CIP-PR) - memory layout optimization
- *
- * This algorithm uses an advanced strategy that stores some IP layers while recovering others:
- * - Forward pass: Store IP layers 6-9 (upper 4 layers)
- * - Post-retrieval: Recover IP layers 1-5 (lower 5 layers) on-demand if needed
- *
- * Algorithm flow:
- * 1. Forward pass (non-indexed): L0 -> L1 -> L2 -> L3 -> L4 -> L5
- *    - Uses Item0-Item5 types (no index field) since indices are not needed yet
- * 2. Add indices at layer 5: Convert L5 to L5_IDX (expand with indices)
- * 3. Forward pass (indexed): L5_IDX -> L6_IDX -> L7_IDX -> L8_IDX -> IP9
- *    - Store IP6, IP7, IP8, IP9 in memory
- * 4. Solution expansion: If IP9 non-empty, expand solutions using IP6, IP7, IP8.
- * 4. Post-retrieval: If solutions exist, recover IP1-IP5 on-demand
- *    - Each recovery recomputes L0 -> L(h-1) -> IPh from scratch
- *    - Expand solutions backwards using recovered IP layer: IPh
- *
- *
- * @param seed Random seed for generating initial layer L0
- * @param base Optional pre-allocated memory buffer. If nullptr, allocates internally.
- * @return std::vector<Solution> All non-trivial solutions found
- *
- * Memory layout (total = MAX_MEM_BYTES_APR5):
- * - [0, MAX_ITEM_MEM_BYTES): Item layer storage for L0, L1, ..., L8
- * - [base_end - 3*MAX_IP_MEM_BYTES, base_end - 2*MAX_IP_MEM_BYTES): IP8 storage
- * - [base_end - 2*MAX_IP_MEM_BYTES, base_end - 1*MAX_IP_MEM_BYTES): IP7 storage
- * - [base_end - 1*MAX_IP_MEM_BYTES, base_end): IP6 storage
- * - IP1,..., IP5, IP9 reuses the layer buffer at [0, MAX_IP_MEM_BYTES).
- *
- * Note: if pre-allocated memory buffer is provided (base != nullptr), it must
- * allocate at least `MAX_MEM_BYTES_APR5` bytes.
- */
-std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr)
-{
-    // Memory calculation: Layer7_IDX + 3 IP arrays
-    // We use slightly more memory for simplicity (extra ~2MB)
-    size_t total_mem = MAX_MEM_BYTES_APR5;
-    bool own_base = false;
-    if (base == nullptr)
-    {
-        base = static_cast<uint8_t *>(std::malloc(total_mem));
-        own_base = true;
-    }
-    IFV
-    {
-        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
-    }
-    // Warning: Please ensure that the provided base memory is at least `total_mem` bytes, otherwise corrupted memory access may occur.
-
-    uint8_t *base_end = base + MAX_MEM_BYTES_APR5;
-
-    // Initialize layer buffers (non-indexed for layers 0-5, indexed for 6-8)
-    Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
-    Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
-    Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
-    Layer3 L3 = init_layer<Item3>(base, MAX_LIST_SIZE * sizeof(Item3));
-    Layer4 L4 = init_layer<Item4>(base, MAX_LIST_SIZE * sizeof(Item4));
-    Layer5 L5 = init_layer<Item5>(base, MAX_LIST_SIZE * sizeof(Item5));
-    Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
-    Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
-    Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
-
-    // Initialize IP storage (allocated from the end of buffer)
-    Layer_IP IP6 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
-    Layer_IP IP7 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
-    Layer_IP IP8 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
-    Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES); // Reuse layer buffer
-
-    // Forward pass Part 1: Non-indexed layers (0-5)
-    // These layers don't track indices, using simpler Item types to save memory
-    fill_layer0(L0, seed);
-    merge0_inplace(L0, L1);
-    merge1_inplace(L1, L2);
-    merge2_inplace(L2, L3);
-    merge3_inplace(L3, L4);
-    merge4_inplace(L4, L5);
-
-    // Transition: Add indices to layer 5 for tracking from this point forward
-    Layer5_IDX L5_IDX = expand_layer_to_idx_inplace<Item5, Item5_IDX>(L5);
-
-    // Forward pass Part 2: Indexed layers (5-8) with IP storage
-    merge5_ip_inplace(L5_IDX, L6_IDX, IP6); // Store IP6
-    set_index_batch(L6_IDX);
-    merge6_ip_inplace(L6_IDX, L7_IDX, IP7); // Store IP7
-    set_index_batch(L7_IDX);
-    merge7_ip_inplace(L7_IDX, L8_IDX, IP8); // Store IP8
-    set_index_batch(L8_IDX);
-    merge8_inplace_for_ip(L8_IDX, IP9); // Generate IP9 (solutions)
-
-    IFV
-    {
-        std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
-        std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
-        std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
-        std::cout << "Layer 6 IP size: " << IP6.size() << std::endl;
-    }
-
-    std::vector<Solution> solutions;
-
-    // Backward pass: Expand solutions if any exist
-    // Backward pass: Expand solutions if any exist
-    if (IP9.size() != 0)
-    {
-        // Expand stored IP layers (9, 8, 7, 6)
-        expand_solutions(solutions, IP9);
-        expand_solutions(solutions, IP8);
-        expand_solutions(solutions, IP7);
-        expand_solutions(solutions, IP6);
-
-        // Recover and expand lower IP layers (5 down to 1) on-demand
-        // Each recover_IP recomputes L0 -> L(h-1) -> IPh using the base buffer
-        for (int h = 5; h >= 1; --h)
-        {
-            Layer_IP IPh = recover_IP(h, seed, base); // Recompute IPh on-demand
-            IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
-            expand_solutions(solutions, IPh); // Expand solutions using IPh
-        }
-        filter_trivial_solutions(solutions); // Remove solutions with repeated indices
-    }
-
-    if (own_base)
-    {
-        std::free(base);
-    }
-    return solutions;
-}
-
-/**
- * @brief CIP with External Memory (CIP-EM) - stores IP layers to disk for minimal memory usage
- *
- * This algorithm minimizes memory usage by storing all Index Pointer (IP) layers to disk
- * instead of keeping them in RAM. It writes IP arrays sequentially to a file during the
- * forward pass, then reads them back during the backward pass for solution expansion.
- *
- * Algorithm flow:
- * 1. Forward pass: Generate layers L0 -> L1 -> ... -> L8 -> IP9
- *    - Each merge operation produces both the next layer and an IP array
- *    - IP arrays (IP1-IP8) are immediately written to disk via streaming writer
- *    - Only IP9 (solutions) is kept in memory
- * 2. Backward pass: If solutions exist (IP9 non-empty), expand using disk storage
- *    - Open file reader and extract IP Items (IP8 down to IP1) from disk on-demand
- *    - Only 2^(k +1) reads is needed to expand solutions
- *
- * @param seed Random seed for generating initial layer L0
- * @param em_path File path for storing external memory (IP layers)
- * @param base Optional pre-allocated memory buffer. If nullptr, allocates internally.
- * @return std::vector<Solution> All non-trivial solutions found
- *
- * Memory layout (total = MAX_ITEM_MEM_BYTES):
- * - [0, MAX_ITEM_MEM_BYTES): Layer storage (L0-L8, reused for each layer)
- * - IP9 reuses the layer buffer after L8 is consumed
- * - IP1-IP8 are stored on disk (not in RAM)
- *
- * Disk storage format:
- * - IP arrays are written sequentially using IPDiskWriter (streaming write)
- * - IPDiskManifest tracks offset and count for each IP layer
- * - Total disk usage: ~sum(IP1.size() to IP8.size()) * sizeof(Item_IP)
- *
- * Memory efficiency:
- * - Peak memory: ~MAX_ITEM_MEM_BYTES (single layer buffer)
- * - Same as plain_cip_pr but trades computation for I/O
- * - Disk I/O overhead: sequential write (forward) + sequential read (backward), the latter being more negeligible.
- *
- * Note: if pre-allocated memory buffer is provided (base != nullptr), it must
- * allocate at least `MAX_ITEM_MEM_BYTES` bytes.
- */
-std::vector<Solution> cip_em(int seed, const std::string &em_path, uint8_t *base = nullptr)
+std::vector<Solution> plain_cip_pr(int seed, uint8_t *base)
 {
     const size_t total_mem = MAX_ITEM_MEM_BYTES;
     bool own_base = false;
-    if (base == nullptr)
+    if (!base)
     {
         base = static_cast<uint8_t *>(std::malloc(total_mem));
         own_base = true;
@@ -559,9 +269,44 @@ std::vector<Solution> cip_em(int seed, const std::string &em_path, uint8_t *base
     {
         std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
     }
-    // Warning: Please ensure that the provided base memory is at least `total_mem` bytes, otherwise corrupted memory access may occur.
 
-    // Initialize layer buffers (reuse same memory for all layers)
+    std::vector<Solution> solutions;
+    Layer_IP IP9 = recover_IP(9, seed, base);
+    IFV { std::cout << "Layer 9 IP size: " << IP9.size() << std::endl; }
+
+    if (!IP9.empty())
+    {
+        expand_solutions(solutions, IP9);
+        for (int h = 8; h >= 1; --h)
+        {
+            Layer_IP IPh = recover_IP(h, seed, base);
+            IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
+            expand_solutions(solutions, IPh);
+        }
+        filter_trivial_solutions(solutions);
+    }
+
+    if (own_base)
+    {
+        std::free(base);
+    }
+    return solutions;
+}
+
+std::vector<Solution> cip_em(int seed, const std::string &em_path, uint8_t *base)
+{
+    const size_t total_mem = MAX_ITEM_MEM_BYTES;
+    bool own_base = false;
+    if (!base)
+    {
+        base = static_cast<uint8_t *>(std::malloc(total_mem));
+        own_base = true;
+    }
+    IFV
+    {
+        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
+    }
+
     Layer0_IDX L0 = init_layer<Item0_IDX>(base, MAX_LIST_SIZE * sizeof(Item0_IDX));
     Layer1_IDX L1 = init_layer<Item1_IDX>(base, MAX_LIST_SIZE * sizeof(Item1_IDX));
     Layer2_IDX L2 = init_layer<Item2_IDX>(base, MAX_LIST_SIZE * sizeof(Item2_IDX));
@@ -571,89 +316,87 @@ std::vector<Solution> cip_em(int seed, const std::string &em_path, uint8_t *base
     Layer6_IDX L6 = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
     Layer7_IDX L7 = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
     Layer8_IDX L8 = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
-    Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES); // Reuse layer buffer
+    Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
 
-    // Initialize disk I/O structures
-    // Initialize disk I/O structures
-    IPDiskManifest manifest; // Tracks offset and count for each IP layer on disk
-    EquihashIPDiskWriter writer; // Streaming writer for IP arrays
-
+    IPDiskManifest manifest{};
+    EquihashIPDiskWriter writer;
     if (!writer.open(em_path.c_str()))
     {
         std::cerr << "Failed to open EM file: " << em_path << std::endl;
-        std::free(base);
-        return std::vector<Solution>();
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return {};
     }
 
-    // Forward pass: Generate all layers and stream IP arrays to disk
-    // Pattern: fill/merge -> record IP metadata -> set_index -> clear previous layer
     manifest.ip[0].offset = 0;
-    fill_layer0<Layer0_IDX>(L0, seed);
-    set_index_batch(L0);                  // Assign unique indices for tracking
-    merge0_em_ip_inplace(L0, L1, writer); // Merge and stream IP1 to disk
+    fill_layer0(L0, seed);
+    set_index_batch(L0);
+    merge0_em_ip_inplace(L0, L1, writer);
     manifest.ip[0].count = L1.size();
     manifest.ip[1].offset = writer.get_current_offset();
     set_index_batch(L1);
     clear_vec(L0);
     IFV { std::cout << "Layer 1 size: " << L1.size() << std::endl; }
 
-    merge1_em_ip_inplace(L1, L2, writer); // Stream IP2 to disk
+    merge1_em_ip_inplace(L1, L2, writer);
     manifest.ip[1].count = L2.size();
     manifest.ip[2].offset = writer.get_current_offset();
     set_index_batch(L2);
     clear_vec(L1);
     IFV { std::cout << "Layer 2 size: " << L2.size() << std::endl; }
 
-    merge2_em_ip_inplace(L2, L3, writer); // Stream IP3 to disk
+    merge2_em_ip_inplace(L2, L3, writer);
     manifest.ip[2].count = L3.size();
     manifest.ip[3].offset = writer.get_current_offset();
     set_index_batch(L3);
     clear_vec(L2);
     IFV { std::cout << "Layer 3 size: " << L3.size() << std::endl; }
 
-    merge3_em_ip_inplace(L3, L4, writer); // Stream IP4 to disk
+    merge3_em_ip_inplace(L3, L4, writer);
     manifest.ip[3].count = L4.size();
     manifest.ip[4].offset = writer.get_current_offset();
     set_index_batch(L4);
     clear_vec(L3);
     IFV { std::cout << "Layer 4 size: " << L4.size() << std::endl; }
 
-    merge4_em_ip_inplace(L4, L5, writer); // Stream IP5 to disk
+    merge4_em_ip_inplace(L4, L5, writer);
     manifest.ip[4].count = L5.size();
     manifest.ip[5].offset = writer.get_current_offset();
     set_index_batch(L5);
     clear_vec(L4);
     IFV { std::cout << "Layer 5 size: " << L5.size() << std::endl; }
 
-    merge5_em_ip_inplace(L5, L6, writer); // Stream IP6 to disk
+    merge5_em_ip_inplace(L5, L6, writer);
     manifest.ip[5].count = L6.size();
     manifest.ip[6].offset = writer.get_current_offset();
     set_index_batch(L6);
     clear_vec(L5);
     IFV { std::cout << "Layer 6 size: " << L6.size() << std::endl; }
 
-    merge6_em_ip_inplace(L6, L7, writer); // Stream IP7 to disk
+    merge6_em_ip_inplace(L6, L7, writer);
     manifest.ip[6].count = L7.size();
     manifest.ip[7].offset = writer.get_current_offset();
     set_index_batch(L7);
     clear_vec(L6);
     IFV { std::cout << "Layer 7 size: " << L7.size() << std::endl; }
 
-    merge7_em_ip_inplace(L7, L8, writer); // Stream IP8 to disk
+    merge7_em_ip_inplace(L7, L8, writer);
     manifest.ip[7].count = L8.size();
     set_index_batch(L8);
     clear_vec(L7);
     IFV { std::cout << "Layer 8 size: " << L8.size() << std::endl; }
 
-    merge8_inplace_for_ip(L8, IP9); // Generate IP9 (solutions) in memory
+    merge8_inplace_for_ip(L8, IP9);
+    clear_vec(L8);
+
+    writer.close();
 
     std::vector<Solution> solutions;
-    EquihashIPDiskReader reader;
-    writer.close(); // Flush all data to disk
-
-    // Backward pass: Expand solutions if any exist
-    if (IP9.size() != 0)
+    if (!IP9.empty())
     {
+        EquihashIPDiskReader reader;
         if (!reader.open(em_path.c_str()))
         {
             std::cerr << "Cannot open EM file for reading\n";
@@ -664,200 +407,931 @@ std::vector<Solution> cip_em(int seed, const std::string &em_path, uint8_t *base
             return solutions;
         }
 
-        // Expand IP9 first (in memory)
-        expand_solutions(solutions, IP9);
-
-        // Read and expand IP8 down to IP1 from disk
-        // Each IP layer is read sequentially from disk using manifest metadata
-        for (int i = 7; i >= 0; --i)
-        {
-            expand_solutions_from_file(solutions, reader, manifest.ip[i]);
-        }
-        filter_trivial_solutions(solutions); // Remove solutions with repeated indices
-    }
-
-    if (own_base)
-    {
-        std::free(base);
-    }
-    reader.close();
-    return solutions;
-}
-
-/**
- * @brief CIP with External Memory and Extra IP Cache - reduces disk I/O by buffering one IP array
- *
- * This is a variant of CIP-EM that allocates an extra IP array buffer in memory to reduce
- * the number of small disk writes. Instead of streaming IP data directly during merge operations,
- * it first stores each IP array in memory, then writes the complete array to disk.
- *
- * Algorithm flow:
- * 1. Forward pass: Generate layers L0 -> L1 -> ... -> L8 -> IP9
- *    - Each merge produces an IP array stored temporarily in IP_cache
- *    - IP_cache is then written to disk as a complete array
- *    - IP9 (solutions) is kept in memory
- * 2. Backward pass: Same as cip_em - read IP arrays from disk for solution expansion
- *
- * @param seed Random seed for generating initial layer L0
- * @param em_path File path for storing external memory (IP layers)
- * @param base Optional pre-allocated memory buffer. If nullptr, allocates internally.
- * @return std::vector<Solution> All non-trivial solutions found
- *
- * Memory layout (total = MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES):
- * - [0, MAX_ITEM_MEM_BYTES): Layer storage (L0-L8, reused for each layer)
- * - [MAX_ITEM_MEM_BYTES, MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES): IP_cache buffer
- * - IP9 reuses the layer buffer after L8 is consumed
- *
- * I/O pattern differences from cip_em:
- * - cip_em: Streaming writes (many small writes during merge)
- * - cip_em_extra_ip_cache: Buffered writes (one large write per IP layer)
- * - In practice: minimal performance difference due to OS-level buffering
- *
- * Memory efficiency:
- * - Peak memory: ~MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES
- * - Slightly more memory than cip_em for potential I/O optimization
- *
- * Note: if pre-allocated memory buffer is provided (base != nullptr), it must
- * allocate at least `MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES` bytes.
- */
-std::vector<Solution> cip_em_extra_ip_cache(int seed, const std::string &em_path, uint8_t *base = nullptr)
-{
-    const size_t total_mem = MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES;
-    bool own_base = false;
-    if (base == nullptr)
-    {
-        base = static_cast<uint8_t *>(std::malloc(total_mem));
-        own_base = true;
-    }
-    IFV
-    {
-        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
-    }
-    // Warning: Please ensure that the provided base memory is at least `total_mem` bytes, otherwise corrupted memory access may occur.
-
-    // Initialize layer buffers (reuse same memory for all layers)
-    Layer0_IDX L0 = init_layer<Item0_IDX>(base, MAX_LIST_SIZE * sizeof(Item0_IDX));
-    Layer1_IDX L1 = init_layer<Item1_IDX>(base, MAX_LIST_SIZE * sizeof(Item1_IDX));
-    Layer2_IDX L2 = init_layer<Item2_IDX>(base, MAX_LIST_SIZE * sizeof(Item2_IDX));
-    Layer3_IDX L3 = init_layer<Item3_IDX>(base, MAX_LIST_SIZE * sizeof(Item3_IDX));
-    Layer4_IDX L4 = init_layer<Item4_IDX>(base, MAX_LIST_SIZE * sizeof(Item4_IDX));
-    Layer5_IDX L5 = init_layer<Item5_IDX>(base, MAX_LIST_SIZE * sizeof(Item5_IDX));
-    Layer6_IDX L6 = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
-    Layer7_IDX L7 = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
-    Layer8_IDX L8 = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
-    Layer_IP IP_cache = init_layer<Item_IP>(base + MAX_ITEM_MEM_BYTES, MAX_IP_MEM_BYTES); // Extra buffer for IP
-    Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);                           // Reuse layer buffer
-
-    // Initialize disk I/O structures
-    IPDiskManifest manifest; // Tracks offset and count for each IP layer on disk
-    EquihashIPDiskWriter writer; // Writer for complete IP arrays
-
-    if (!writer.open(em_path.c_str()))
-    {
-        std::cerr << "Failed to open EM file: " << em_path << std::endl;
-        std::free(base);
-        return std::vector<Solution>();
-    }
-
-    // Forward pass: Generate layers and buffer IP arrays before writing to disk
-    // Pattern: fill/merge -> buffer IP in cache -> write complete array -> clear cache
-    fill_layer0(L0, seed);
-    set_index_batch(L0);
-    merge0_ip_inplace(L0, L1, IP_cache); // Store IP1 in cache
-    manifest.ip[0].count = L1.size();
-    manifest.ip[0].offset = writer.append_layer(IP_cache.data(), IP_cache.size()); // Write complete IP1
-    set_index_batch(L1);
-    clear_vec(L0);
-    clear_vec(IP_cache); // Clear cache for next IP
-    IFV { std::cout << "Layer 1 size: " << L1.size() << std::endl; }
-
-    merge1_ip_inplace(L1, L2, IP_cache); // Store IP2 in cache
-    manifest.ip[1].count = IP_cache.size();
-    manifest.ip[1].offset = writer.append_layer(IP_cache.data(), IP_cache.size()); // Write complete IP2
-    set_index_batch(L2);
-    clear_vec(L1);
-    clear_vec(IP_cache);
-    IFV { std::cout << "Layer 2 size: " << L2.size() << std::endl; }
-
-    merge2_ip_inplace(L2, L3, IP_cache); // Store IP3 in cache
-    manifest.ip[2].count = L3.size();
-    manifest.ip[2].offset = writer.append_layer(IP_cache.data(), IP_cache.size()); // Write complete IP3
-    set_index_batch(L3);
-    clear_vec(L2);
-    clear_vec(IP_cache);
-    IFV { std::cout << "Layer 3 size: " << L3.size() << std::endl; }
-
-    merge3_ip_inplace(L3, L4, IP_cache); // Store IP4 in cache
-    manifest.ip[3].count = L4.size();
-    manifest.ip[3].offset = writer.append_layer(IP_cache.data(), IP_cache.size()); // Write complete IP4
-    set_index_batch(L4);
-    clear_vec(L3);
-    clear_vec(IP_cache);
-    IFV { std::cout << "Layer 4 size: " << L4.size() << std::endl; }
-
-    merge4_ip_inplace(L4, L5, IP_cache); // Store IP5 in cache
-    manifest.ip[4].count = L5.size();
-    manifest.ip[4].offset = writer.append_layer(IP_cache.data(), IP_cache.size()); // Write complete IP5
-    set_index_batch(L5);
-    clear_vec(L4);
-    clear_vec(IP_cache);
-    IFV { std::cout << "Layer 5 size: " << L5.size() << std::endl; }
-
-    merge5_ip_inplace(L5, L6, IP_cache); // Store IP6 in cache
-    manifest.ip[5].count = L6.size();
-    manifest.ip[5].offset = writer.append_layer(IP_cache.data(), IP_cache.size()); // Write complete IP6
-    set_index_batch(L6);
-    clear_vec(L5);
-    clear_vec(IP_cache);
-    IFV { std::cout << "Layer 6 size: " << L6.size() << std::endl; }
-
-    merge6_ip_inplace(L6, L7, IP_cache); // Store IP7 in cache
-    manifest.ip[6].count = L7.size();
-    manifest.ip[6].offset = writer.append_layer(IP_cache.data(), IP_cache.size()); // Write complete IP7
-    set_index_batch(L7);
-    clear_vec(L6);
-    clear_vec(IP_cache);
-    IFV { std::cout << "Layer 7 size: " << L7.size() << std::endl; }
-
-    merge7_ip_inplace(L7, L8, IP_cache); // Store IP8 in cache
-    manifest.ip[7].count = L8.size();
-    manifest.ip[7].offset = writer.append_layer(IP_cache.data(), IP_cache.size()); // Write complete IP8
-    set_index_batch(L8);
-    clear_vec(L7);
-    clear_vec(IP_cache);
-    IFV { std::cout << "Layer 8 size: " << L8.size() << std::endl; }
-
-    merge8_inplace_for_ip(L8, IP9); // Generate IP9 (solutions) in memory
-
-    // Backward pass: Expand solutions from disk
-    std::vector<Solution> solutions;
-    EquihashIPDiskReader reader;
-    writer.close(); // Flush all data to disk
-
-    if (IP9.size() != 0)
-    {
-        if (!reader.open(em_path.c_str()))
-        {
-            std::cerr << "Cannot open EM file for reading\n";
-            if (own_base)
-            {
-                std::free(base);
-            }
-            return solutions;
-        }
-        // Start with IP9 (in memory)
         expand_solutions(solutions, IP9);
         for (int i = 7; i >= 0; --i)
         {
             expand_solutions_from_file(solutions, reader, manifest.ip[i]);
         }
         filter_trivial_solutions(solutions);
+        reader.close();
     }
+
     if (own_base)
     {
         std::free(base);
     }
-
-    reader.close();
     return solutions;
+}
+
+uint64_t advanced_cip_pr_peak_memory(int h)
+{
+    uint64_t k = EquihashParams::K;
+    if (h >= static_cast<int>(k) - 1)
+    {
+        // plain_cip_pr: recovers all IP layers on-demand, no storage needed
+        return MAX_ITEM_MEM_BYTES;
+    }
+    uint64_t ip_storage = MAX_IP_MEM_BYTES * (k - 1 - h);
+    uint64_t total_mem = MAX_LIST_SIZE * ItemIDXSizes[k - 2] + ip_storage;
+    return total_mem > MAX_ITEM_MEM_BYTES ? total_mem : MAX_ITEM_MEM_BYTES;
+}
+
+/**
+ * @brief Advanced CIP with Post-Retrieval for Equihash (200,9)
+ *
+ * switching_height meanings:
+ * - 0: plain_cip (full forward, store IP1..IP8)
+ * - 1..7: hybrid, store IP{h+1..8} and recover IP{h..1}
+ * - 8: plain_cip_pr (full post-retrieval, recover IP9..IP1)
+ */
+template <int switching_height>
+std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base /* = nullptr */)
+{
+    constexpr int K = EquihashParams::K; // K = 9
+    static_assert(switching_height >= 0 && switching_height < K, "Invalid switching height");
+
+    // ====== h = 0: full forward + store IP1..IP8 using the advanced layout (not plain_cip) ======
+    if constexpr (switching_height == 0)
+    {
+        // Allocate with peak_memory upfront (same pattern as other branches)
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024)
+                      << " (h=0)" << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        // IP storage: place IP1..IP8 from the end backward
+        Layer_IP IP1 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP2 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP3 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP4 = init_layer<Item_IP>(base_end - 4 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP5 = init_layer<Item_IP>(base_end - 5 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP6 = init_layer<Item_IP>(base_end - 6 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP7 = init_layer<Item_IP>(base_end - 7 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP8 = init_layer<Item_IP>(base_end - 8 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+
+        // IP9 reuses the front of the buffer (same as other branches)
+        Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
+
+        // Part 1: non-indexed; only up to Layer0 (since h=0)
+        Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
+        fill_layer0(L0, seed);
+
+        // Transition: L0 -> L0_IDX, attach indices here
+        Layer0_IDX L0_IDX = expand_layer_to_idx_inplace<Item0, Item0_IDX>(L0);
+
+        // Part 2: fully indexed forward, record IP1..IP8
+
+        Layer1_IDX L1_IDX = init_layer<Item1_IDX>(base, MAX_LIST_SIZE * sizeof(Item1_IDX));
+        merge0_ip_inplace(L0_IDX, L1_IDX, IP1);
+        set_index_batch(L1_IDX);
+        clear_vec(L0_IDX);
+
+        Layer2_IDX L2_IDX = init_layer<Item2_IDX>(base, MAX_LIST_SIZE * sizeof(Item2_IDX));
+        merge1_ip_inplace(L1_IDX, L2_IDX, IP2);
+        set_index_batch(L2_IDX);
+        clear_vec(L1_IDX);
+
+        Layer3_IDX L3_IDX = init_layer<Item3_IDX>(base, MAX_LIST_SIZE * sizeof(Item3_IDX));
+        merge2_ip_inplace(L2_IDX, L3_IDX, IP3);
+        set_index_batch(L3_IDX);
+        clear_vec(L2_IDX);
+
+        Layer4_IDX L4_IDX = init_layer<Item4_IDX>(base, MAX_LIST_SIZE * sizeof(Item4_IDX));
+        merge3_ip_inplace(L3_IDX, L4_IDX, IP4);
+        set_index_batch(L4_IDX);
+        clear_vec(L3_IDX);
+
+        Layer5_IDX L5_IDX = init_layer<Item5_IDX>(base, MAX_LIST_SIZE * sizeof(Item5_IDX));
+        merge4_ip_inplace(L4_IDX, L5_IDX, IP5);
+        set_index_batch(L5_IDX);
+        clear_vec(L4_IDX);
+
+        Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
+        merge5_ip_inplace(L5_IDX, L6_IDX, IP6);
+        set_index_batch(L6_IDX);
+        clear_vec(L5_IDX);
+
+        Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
+        merge6_ip_inplace(L6_IDX, L7_IDX, IP7);
+        set_index_batch(L7_IDX);
+        clear_vec(L6_IDX);
+
+        Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+        merge7_ip_inplace(L7_IDX, L8_IDX, IP8);
+        set_index_batch(L8_IDX);
+        clear_vec(L7_IDX);
+
+        // Last layer: L8_IDX -> IP9 (no parent IP recorded for IP9)
+        merge8_inplace_for_ip(L8_IDX, IP9);
+        clear_vec(L8_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
+            std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
+            std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
+            std::cout << "Layer 6 IP size: " << IP6.size() << std::endl;
+            std::cout << "Layer 5 IP size: " << IP5.size() << std::endl;
+            std::cout << "Layer 4 IP size: " << IP4.size() << std::endl;
+            std::cout << "Layer 3 IP size: " << IP3.size() << std::endl;
+            std::cout << "Layer 2 IP size: " << IP2.size() << std::endl;
+            std::cout << "Layer 1 IP size: " << IP1.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP9.empty())
+        {
+            // h=0 skips post-retrieval; expand directly from stored IP1..IP9
+            expand_solutions(solutions, IP9);
+            expand_solutions(solutions, IP8);
+            expand_solutions(solutions, IP7);
+            expand_solutions(solutions, IP6);
+            expand_solutions(solutions, IP5);
+            expand_solutions(solutions, IP4);
+            expand_solutions(solutions, IP3);
+            expand_solutions(solutions, IP2);
+            expand_solutions(solutions, IP1);
+
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
+    }
+    else if constexpr (switching_height == K - 1)
+    {
+        return plain_cip_pr(seed, base);
+    }
+    else if constexpr (switching_height == 1)
+    {
+        // Store IP2..IP8 (7 layers), recover IP1
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << " (h=1)" << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        // IP storage: place IP2..IP8 from buffer end backward
+        Layer_IP IP2 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP3 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP4 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP5 = init_layer<Item_IP>(base_end - 4 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP6 = init_layer<Item_IP>(base_end - 5 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP7 = init_layer<Item_IP>(base_end - 6 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP8 = init_layer<Item_IP>(base_end - 7 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES); // IP9 reuses the front buffer
+
+        // Part 1: L0 -> L1 (non-indexed)
+        Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
+        Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
+        fill_layer0(L0, seed);
+        merge0_inplace(L0, L1);
+        clear_vec(L0);
+
+        // Transition: L1 -> L1_IDX
+        Layer1_IDX L1_IDX = expand_layer_to_idx_inplace<Item1, Item1_IDX>(L1);
+
+        // Part 2: indexed + record IP2..IP8
+        Layer2_IDX L2_IDX = init_layer<Item2_IDX>(base, MAX_LIST_SIZE * sizeof(Item2_IDX));
+        merge1_ip_inplace(L1_IDX, L2_IDX, IP2);
+        set_index_batch(L2_IDX);
+        clear_vec(L1_IDX);
+
+        Layer3_IDX L3_IDX = init_layer<Item3_IDX>(base, MAX_LIST_SIZE * sizeof(Item3_IDX));
+        merge2_ip_inplace(L2_IDX, L3_IDX, IP3);
+        set_index_batch(L3_IDX);
+        clear_vec(L2_IDX);
+
+        Layer4_IDX L4_IDX = init_layer<Item4_IDX>(base, MAX_LIST_SIZE * sizeof(Item4_IDX));
+        merge3_ip_inplace(L3_IDX, L4_IDX, IP4);
+        set_index_batch(L4_IDX);
+        clear_vec(L3_IDX);
+
+        Layer5_IDX L5_IDX = init_layer<Item5_IDX>(base, MAX_LIST_SIZE * sizeof(Item5_IDX));
+        merge4_ip_inplace(L4_IDX, L5_IDX, IP5);
+        set_index_batch(L5_IDX);
+        clear_vec(L4_IDX);
+
+        Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
+        merge5_ip_inplace(L5_IDX, L6_IDX, IP6);
+        set_index_batch(L6_IDX);
+        clear_vec(L5_IDX);
+
+        Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
+        merge6_ip_inplace(L6_IDX, L7_IDX, IP7);
+        set_index_batch(L7_IDX);
+        clear_vec(L6_IDX);
+
+        Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+        merge7_ip_inplace(L7_IDX, L8_IDX, IP8);
+        set_index_batch(L8_IDX);
+        clear_vec(L7_IDX);
+
+        merge8_inplace_for_ip(L8_IDX, IP9);
+        clear_vec(L8_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
+            std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
+            std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
+            std::cout << "Layer 6 IP size: " << IP6.size() << std::endl;
+            std::cout << "Layer 5 IP size: " << IP5.size() << std::endl;
+            std::cout << "Layer 4 IP size: " << IP4.size() << std::endl;
+            std::cout << "Layer 3 IP size: " << IP3.size() << std::endl;
+            std::cout << "Layer 2 IP size: " << IP2.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP9.empty())
+        {
+            expand_solutions(solutions, IP9);
+            expand_solutions(solutions, IP8);
+            expand_solutions(solutions, IP7);
+            expand_solutions(solutions, IP6);
+            expand_solutions(solutions, IP5);
+            expand_solutions(solutions, IP4);
+            expand_solutions(solutions, IP3);
+            expand_solutions(solutions, IP2);
+
+            // Recover IP1
+            Layer_IP IP1 = recover_IP(1, seed, base);
+            IFV { std::cout << "Layer 1 IP size: " << IP1.size() << std::endl; }
+            expand_solutions(solutions, IP1);
+
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
+    }
+    else if constexpr (switching_height == 2)
+    {
+        // Store IP3..IP8 (6 layers), recover IP1..IP2
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << " (h=2)" << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        Layer_IP IP3 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP4 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP5 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP6 = init_layer<Item_IP>(base_end - 4 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP7 = init_layer<Item_IP>(base_end - 5 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP8 = init_layer<Item_IP>(base_end - 6 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
+
+        // Part 1: L0 -> L1 -> L2
+        Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
+        Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
+        Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
+        fill_layer0(L0, seed);
+        merge0_inplace(L0, L1);
+        clear_vec(L0);
+        merge1_inplace(L1, L2);
+        clear_vec(L1);
+
+        // Transition: L2 -> L2_IDX
+        Layer2_IDX L2_IDX = expand_layer_to_idx_inplace<Item2, Item2_IDX>(L2);
+
+        // Part 2
+        Layer3_IDX L3_IDX = init_layer<Item3_IDX>(base, MAX_LIST_SIZE * sizeof(Item3_IDX));
+        merge2_ip_inplace(L2_IDX, L3_IDX, IP3);
+        set_index_batch(L3_IDX);
+        clear_vec(L2_IDX);
+
+        Layer4_IDX L4_IDX = init_layer<Item4_IDX>(base, MAX_LIST_SIZE * sizeof(Item4_IDX));
+        merge3_ip_inplace(L3_IDX, L4_IDX, IP4);
+        set_index_batch(L4_IDX);
+        clear_vec(L3_IDX);
+
+        Layer5_IDX L5_IDX = init_layer<Item5_IDX>(base, MAX_LIST_SIZE * sizeof(Item5_IDX));
+        merge4_ip_inplace(L4_IDX, L5_IDX, IP5);
+        set_index_batch(L5_IDX);
+        clear_vec(L4_IDX);
+
+        Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
+        merge5_ip_inplace(L5_IDX, L6_IDX, IP6);
+        set_index_batch(L6_IDX);
+        clear_vec(L5_IDX);
+
+        Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
+        merge6_ip_inplace(L6_IDX, L7_IDX, IP7);
+        set_index_batch(L7_IDX);
+        clear_vec(L6_IDX);
+
+        Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+        merge7_ip_inplace(L7_IDX, L8_IDX, IP8);
+        set_index_batch(L8_IDX);
+        clear_vec(L7_IDX);
+
+        merge8_inplace_for_ip(L8_IDX, IP9);
+        clear_vec(L8_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
+            std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
+            std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
+            std::cout << "Layer 6 IP size: " << IP6.size() << std::endl;
+            std::cout << "Layer 5 IP size: " << IP5.size() << std::endl;
+            std::cout << "Layer 4 IP size: " << IP4.size() << std::endl;
+            std::cout << "Layer 3 IP size: " << IP3.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP9.empty())
+        {
+            expand_solutions(solutions, IP9);
+            expand_solutions(solutions, IP8);
+            expand_solutions(solutions, IP7);
+            expand_solutions(solutions, IP6);
+            expand_solutions(solutions, IP5);
+            expand_solutions(solutions, IP4);
+            expand_solutions(solutions, IP3);
+
+            // Recover IP2, IP1
+            for (int h = 2; h >= 1; --h)
+            {
+                Layer_IP IPh = recover_IP(h, seed, base);
+                IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
+                expand_solutions(solutions, IPh);
+            }
+
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
+    }
+    else if constexpr (switching_height == 3)
+    {
+        // Store IP4..IP8 (5 layers), recover IP1..IP3
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << " (h=3)" << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        Layer_IP IP4 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP5 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP6 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP7 = init_layer<Item_IP>(base_end - 4 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP8 = init_layer<Item_IP>(base_end - 5 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
+
+        // Part 1: L0 -> L1 -> L2 -> L3
+        Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
+        Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
+        Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
+        Layer3 L3 = init_layer<Item3>(base, MAX_LIST_SIZE * sizeof(Item3));
+        fill_layer0(L0, seed);
+        merge0_inplace(L0, L1);
+        clear_vec(L0);
+        merge1_inplace(L1, L2);
+        clear_vec(L1);
+        merge2_inplace(L2, L3);
+        clear_vec(L2);
+
+        // Transition: L3 -> L3_IDX
+        Layer3_IDX L3_IDX = expand_layer_to_idx_inplace<Item3, Item3_IDX>(L3);
+
+        // Part 2
+        Layer4_IDX L4_IDX = init_layer<Item4_IDX>(base, MAX_LIST_SIZE * sizeof(Item4_IDX));
+        merge3_ip_inplace(L3_IDX, L4_IDX, IP4);
+        set_index_batch(L4_IDX);
+        clear_vec(L3_IDX);
+
+        Layer5_IDX L5_IDX = init_layer<Item5_IDX>(base, MAX_LIST_SIZE * sizeof(Item5_IDX));
+        merge4_ip_inplace(L4_IDX, L5_IDX, IP5);
+        set_index_batch(L5_IDX);
+        clear_vec(L4_IDX);
+
+        Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
+        merge5_ip_inplace(L5_IDX, L6_IDX, IP6);
+        set_index_batch(L6_IDX);
+        clear_vec(L5_IDX);
+
+        Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
+        merge6_ip_inplace(L6_IDX, L7_IDX, IP7);
+        set_index_batch(L7_IDX);
+        clear_vec(L6_IDX);
+
+        Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+        merge7_ip_inplace(L7_IDX, L8_IDX, IP8);
+        set_index_batch(L8_IDX);
+        clear_vec(L7_IDX);
+
+        merge8_inplace_for_ip(L8_IDX, IP9);
+        clear_vec(L8_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
+            std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
+            std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
+            std::cout << "Layer 6 IP size: " << IP6.size() << std::endl;
+            std::cout << "Layer 5 IP size: " << IP5.size() << std::endl;
+            std::cout << "Layer 4 IP size: " << IP4.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP9.empty())
+        {
+            expand_solutions(solutions, IP9);
+            expand_solutions(solutions, IP8);
+            expand_solutions(solutions, IP7);
+            expand_solutions(solutions, IP6);
+            expand_solutions(solutions, IP5);
+            expand_solutions(solutions, IP4);
+
+            // Recover IP3, IP2, IP1
+            for (int h = 3; h >= 1; --h)
+            {
+                Layer_IP IPh = recover_IP(h, seed, base);
+                IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
+                expand_solutions(solutions, IPh);
+            }
+
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
+    }
+    else if constexpr (switching_height == 4)
+    {
+        // Store IP5..IP8 (4 layers), recover IP1..IP4
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << " (h=4)" << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        Layer_IP IP5 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP6 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP7 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP8 = init_layer<Item_IP>(base_end - 4 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
+
+        // Part 1: L0 -> L1 -> L2 -> L3 -> L4
+        Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
+        Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
+        Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
+        Layer3 L3 = init_layer<Item3>(base, MAX_LIST_SIZE * sizeof(Item3));
+        Layer4 L4 = init_layer<Item4>(base, MAX_LIST_SIZE * sizeof(Item4));
+        fill_layer0(L0, seed);
+        merge0_inplace(L0, L1);
+        clear_vec(L0);
+        merge1_inplace(L1, L2);
+        clear_vec(L1);
+        merge2_inplace(L2, L3);
+        clear_vec(L2);
+        merge3_inplace(L3, L4);
+        clear_vec(L3);
+
+        // Transition: L4 -> L4_IDX
+        Layer4_IDX L4_IDX = expand_layer_to_idx_inplace<Item4, Item4_IDX>(L4);
+
+        // Part 2
+        Layer5_IDX L5_IDX = init_layer<Item5_IDX>(base, MAX_LIST_SIZE * sizeof(Item5_IDX));
+        merge4_ip_inplace(L4_IDX, L5_IDX, IP5);
+        set_index_batch(L5_IDX);
+        clear_vec(L4_IDX);
+
+        Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
+        merge5_ip_inplace(L5_IDX, L6_IDX, IP6);
+        set_index_batch(L6_IDX);
+        clear_vec(L5_IDX);
+
+        Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
+        merge6_ip_inplace(L6_IDX, L7_IDX, IP7);
+        set_index_batch(L7_IDX);
+        clear_vec(L6_IDX);
+
+        Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+        merge7_ip_inplace(L7_IDX, L8_IDX, IP8);
+        set_index_batch(L8_IDX);
+        clear_vec(L7_IDX);
+
+        merge8_inplace_for_ip(L8_IDX, IP9);
+        clear_vec(L8_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
+            std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
+            std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
+            std::cout << "Layer 6 IP size: " << IP6.size() << std::endl;
+            std::cout << "Layer 5 IP size: " << IP5.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP9.empty())
+        {
+            expand_solutions(solutions, IP9);
+            expand_solutions(solutions, IP8);
+            expand_solutions(solutions, IP7);
+            expand_solutions(solutions, IP6);
+            expand_solutions(solutions, IP5);
+
+            // Recover IP4..IP1
+            for (int h = 4; h >= 1; --h)
+            {
+                Layer_IP IPh = recover_IP(h, seed, base);
+                IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
+                expand_solutions(solutions, IPh);
+            }
+
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
+    }
+    else if constexpr (switching_height == 5)
+    {
+        // Store IP6..IP8 (3 layers), recover IP1..IP5
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << " (h=5)" << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        Layer_IP IP6 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP7 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP8 = init_layer<Item_IP>(base_end - 3 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
+
+        // Part 1: L0 -> L1 -> L2 -> L3 -> L4 -> L5
+        Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
+        Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
+        Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
+        Layer3 L3 = init_layer<Item3>(base, MAX_LIST_SIZE * sizeof(Item3));
+        Layer4 L4 = init_layer<Item4>(base, MAX_LIST_SIZE * sizeof(Item4));
+        Layer5 L5 = init_layer<Item5>(base, MAX_LIST_SIZE * sizeof(Item5));
+        fill_layer0(L0, seed);
+        merge0_inplace(L0, L1);
+        clear_vec(L0);
+        merge1_inplace(L1, L2);
+        clear_vec(L1);
+        merge2_inplace(L2, L3);
+        clear_vec(L2);
+        merge3_inplace(L3, L4);
+        clear_vec(L3);
+        merge4_inplace(L4, L5);
+        clear_vec(L4);
+
+        // Transition: L5 -> L5_IDX
+        Layer5_IDX L5_IDX = expand_layer_to_idx_inplace<Item5, Item5_IDX>(L5);
+
+        // Part 2
+        Layer6_IDX L6_IDX = init_layer<Item6_IDX>(base, MAX_LIST_SIZE * sizeof(Item6_IDX));
+        merge5_ip_inplace(L5_IDX, L6_IDX, IP6);
+        set_index_batch(L6_IDX);
+        clear_vec(L5_IDX);
+
+        Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
+        merge6_ip_inplace(L6_IDX, L7_IDX, IP7);
+        set_index_batch(L7_IDX);
+        clear_vec(L6_IDX);
+
+        Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+        merge7_ip_inplace(L7_IDX, L8_IDX, IP8);
+        set_index_batch(L8_IDX);
+        clear_vec(L7_IDX);
+
+        merge8_inplace_for_ip(L8_IDX, IP9);
+        clear_vec(L8_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
+            std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
+            std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
+            std::cout << "Layer 6 IP size: " << IP6.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP9.empty())
+        {
+            expand_solutions(solutions, IP9);
+            expand_solutions(solutions, IP8);
+            expand_solutions(solutions, IP7);
+            expand_solutions(solutions, IP6);
+
+            // Recover IP5..IP1
+            for (int h = 5; h >= 1; --h)
+            {
+                Layer_IP IPh = recover_IP(h, seed, base);
+                IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
+                expand_solutions(solutions, IPh);
+            }
+
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
+    }
+    else if constexpr (switching_height == 6)
+    {
+        // Store IP7..IP8 (2 layers), recover IP1..IP6
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << " (h=6)" << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        Layer_IP IP7 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP8 = init_layer<Item_IP>(base_end - 2 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
+
+        // Part 1: L0 -> L1 -> L2 -> L3 -> L4 -> L5 -> L6
+        Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
+        Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
+        Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
+        Layer3 L3 = init_layer<Item3>(base, MAX_LIST_SIZE * sizeof(Item3));
+        Layer4 L4 = init_layer<Item4>(base, MAX_LIST_SIZE * sizeof(Item4));
+        Layer5 L5 = init_layer<Item5>(base, MAX_LIST_SIZE * sizeof(Item5));
+        Layer6 L6 = init_layer<Item6>(base, MAX_LIST_SIZE * sizeof(Item6));
+        fill_layer0(L0, seed);
+        merge0_inplace(L0, L1);
+        clear_vec(L0);
+        merge1_inplace(L1, L2);
+        clear_vec(L1);
+        merge2_inplace(L2, L3);
+        clear_vec(L2);
+        merge3_inplace(L3, L4);
+        clear_vec(L3);
+        merge4_inplace(L4, L5);
+        clear_vec(L4);
+        merge5_inplace(L5, L6);
+        clear_vec(L5);
+
+        // Transition: L6 -> L6_IDX
+        Layer6_IDX L6_IDX = expand_layer_to_idx_inplace<Item6, Item6_IDX>(L6);
+
+        // Part 2
+        Layer7_IDX L7_IDX = init_layer<Item7_IDX>(base, MAX_LIST_SIZE * sizeof(Item7_IDX));
+        merge6_ip_inplace(L6_IDX, L7_IDX, IP7);
+        set_index_batch(L7_IDX);
+        clear_vec(L6_IDX);
+
+        Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+        merge7_ip_inplace(L7_IDX, L8_IDX, IP8);
+        set_index_batch(L8_IDX);
+        clear_vec(L7_IDX);
+
+        merge8_inplace_for_ip(L8_IDX, IP9);
+        clear_vec(L8_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
+            std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
+            std::cout << "Layer 7 IP size: " << IP7.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP9.empty())
+        {
+            expand_solutions(solutions, IP9);
+            expand_solutions(solutions, IP8);
+            expand_solutions(solutions, IP7);
+
+            // Recover IP6..IP1
+            for (int h = 6; h >= 1; --h)
+            {
+                Layer_IP IPh = recover_IP(h, seed, base);
+                IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
+                expand_solutions(solutions, IPh);
+            }
+
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
+    }
+    else if constexpr (switching_height == 7)
+    {
+        // Store IP8 (1 layer), recover IP1..IP7
+        size_t total_mem = advanced_cip_pr_peak_memory(switching_height);
+        bool own_base = false;
+        if (base == nullptr)
+        {
+            base = static_cast<uint8_t *>(std::malloc(total_mem));
+            own_base = true;
+        }
+        IFV
+        {
+            std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << " (h=7)" << std::endl;
+        }
+
+        uint8_t *base_end = base + total_mem;
+
+        Layer_IP IP8 = init_layer<Item_IP>(base_end - 1 * MAX_IP_MEM_BYTES, MAX_IP_MEM_BYTES);
+        Layer_IP IP9 = init_layer<Item_IP>(base, MAX_IP_MEM_BYTES);
+
+        // Part 1: L0 -> L1 -> L2 -> L3 -> L4 -> L5 -> L6 -> L7
+        Layer0 L0 = init_layer<Item0>(base, MAX_LIST_SIZE * sizeof(Item0));
+        Layer1 L1 = init_layer<Item1>(base, MAX_LIST_SIZE * sizeof(Item1));
+        Layer2 L2 = init_layer<Item2>(base, MAX_LIST_SIZE * sizeof(Item2));
+        Layer3 L3 = init_layer<Item3>(base, MAX_LIST_SIZE * sizeof(Item3));
+        Layer4 L4 = init_layer<Item4>(base, MAX_LIST_SIZE * sizeof(Item4));
+        Layer5 L5 = init_layer<Item5>(base, MAX_LIST_SIZE * sizeof(Item5));
+        Layer6 L6 = init_layer<Item6>(base, MAX_LIST_SIZE * sizeof(Item6));
+        Layer7 L7 = init_layer<Item7>(base, MAX_LIST_SIZE * sizeof(Item7));
+        fill_layer0(L0, seed);
+        merge0_inplace(L0, L1);
+        clear_vec(L0);
+        merge1_inplace(L1, L2);
+        clear_vec(L1);
+        merge2_inplace(L2, L3);
+        clear_vec(L2);
+        merge3_inplace(L3, L4);
+        clear_vec(L3);
+        merge4_inplace(L4, L5);
+        clear_vec(L4);
+        merge5_inplace(L5, L6);
+        clear_vec(L5);
+        merge6_inplace(L6, L7);
+        clear_vec(L6);
+
+        // Transition: L7 -> L7_IDX
+        Layer7_IDX L7_IDX = expand_layer_to_idx_inplace<Item7, Item7_IDX>(L7);
+
+        // Part 2
+        Layer8_IDX L8_IDX = init_layer<Item8_IDX>(base, MAX_LIST_SIZE * sizeof(Item8_IDX));
+        merge7_ip_inplace(L7_IDX, L8_IDX, IP8);
+        set_index_batch(L8_IDX);
+        clear_vec(L7_IDX);
+
+        merge8_inplace_for_ip(L8_IDX, IP9);
+        clear_vec(L8_IDX);
+
+        IFV
+        {
+            std::cout << "Layer 9 IP size: " << IP9.size() << std::endl;
+            std::cout << "Layer 8 IP size: " << IP8.size() << std::endl;
+        }
+
+        std::vector<Solution> solutions;
+
+        if (!IP9.empty())
+        {
+            expand_solutions(solutions, IP9);
+            expand_solutions(solutions, IP8);
+
+            // Recover IP7..IP1
+            for (int h = 7; h >= 1; --h)
+            {
+                Layer_IP IPh = recover_IP(h, seed, base);
+                IFV { std::cout << "Layer " << h << " IP size: " << IPh.size() << std::endl; }
+                expand_solutions(solutions, IPh);
+            }
+
+            filter_trivial_solutions(solutions);
+        }
+
+        if (own_base)
+        {
+            std::free(base);
+        }
+        return solutions;
+    }
+    // Should not reach here (cases 0..8 are covered)
+    else
+    {
+        return {};
+    }
+}
+
+// Explicit template instantiation
+template std::vector<Solution> advanced_cip_pr<0>(int, uint8_t *);
+template std::vector<Solution> advanced_cip_pr<1>(int, uint8_t *);
+template std::vector<Solution> advanced_cip_pr<2>(int, uint8_t *);
+template std::vector<Solution> advanced_cip_pr<3>(int, uint8_t *);
+template std::vector<Solution> advanced_cip_pr<4>(int, uint8_t *);
+template std::vector<Solution> advanced_cip_pr<5>(int, uint8_t *);
+template std::vector<Solution> advanced_cip_pr<6>(int, uint8_t *);
+template std::vector<Solution> advanced_cip_pr<7>(int, uint8_t *);
+template std::vector<Solution> advanced_cip_pr<8>(int, uint8_t *);
+
+// Dispatcher: supports h=0..8
+std::vector<Solution> run_advanced_cip_pr(int seed, int h, uint8_t *base)
+{
+    switch (h)
+    {
+    case 0:
+        return advanced_cip_pr<0>(seed, base);
+    case 1:
+        return advanced_cip_pr<1>(seed, base);
+    case 2:
+        return advanced_cip_pr<2>(seed, base);
+    case 3:
+        return advanced_cip_pr<3>(seed, base);
+    case 4:
+        return advanced_cip_pr<4>(seed, base);
+    case 5:
+        return advanced_cip_pr<5>(seed, base);
+    case 6:
+        return advanced_cip_pr<6>(seed, base);
+    case 7:
+        return advanced_cip_pr<7>(seed, base);
+    case 8:
+        return advanced_cip_pr<8>(seed, base);
+    default:
+        std::cerr << "Unsupported switching height: " << h
+                  << " (must be 0-8 for Equihash 200,9)" << std::endl;
+        return {};
+    }
 }
