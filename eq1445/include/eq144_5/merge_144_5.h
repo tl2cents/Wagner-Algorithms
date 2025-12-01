@@ -312,15 +312,16 @@ inline void merge_iv_layer_optimized(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &
     uint8_t dummy_nonce[32];
     std::memset(dummy_nonce, 0, sizeof(dummy_nonce));
 
+    // ...existing code...
     ZcashEquihashHasher H;
     H.init_midstate(headernonce, sizeof(headernonce), dummy_nonce,
                     EquihashParams::N,
                     EquihashParams::K);
     
-    CachedHasher CH(H);
+    CachedHasher cachedH(H);
 
-    // Sort source array by collision key (using cached hasher)
-    sort_iv_by_key_fast<Layer, KeyBits>(src_arr, CH);
+    // Sort source array by collision key (using hasher)
+    sort_iv_by_key_fast<Layer, KeyBits>(src_arr, cachedH);
 
     const size_t N = src_arr.size();
     size_t avail_dst = dst_arr.capacity() - dst_arr.size();
@@ -337,11 +338,12 @@ inline void merge_iv_layer_optimized(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &
     {
         // Find group with same collision key
         const size_t group_start = i;
-        const auto key0 = get_iv_key_bits_fast<Layer, KeyBits>(CH, src_arr[group_start]);
+        const auto key0 = get_iv_key_bits_fast<Layer, KeyBits>(cachedH, src_arr[group_start]);
         i++;
-        while (i < N && get_iv_key_bits_fast<Layer, KeyBits>(CH, src_arr[i]) == key0)
+        while (i < N && get_iv_key_bits_fast<Layer, KeyBits>(cachedH, src_arr[i]) == key0)
             ++i;
         const size_t group_end = i;
+// ...existing code...
         const size_t group_size = group_end - group_start;
 
         if constexpr (discard_zero)

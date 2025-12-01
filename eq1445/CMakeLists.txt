@@ -199,12 +199,20 @@ add_executable(test_iv_optimization test/test_iv_optimization.cpp ${TEST_COMMON}
 apply_common_opts(test_iv_optimization)
 add_test(NAME test_iv_optimization COMMAND test_iv_optimization)
 
+# ...existing code...
 # Test: test_setivkey_perf - Measure SetIV_Key performance vs fill_layer0
 add_executable(test_setivkey_perf test/test_setivkey_perf.cpp ${TEST_COMMON})
 apply_common_opts(test_setivkey_perf)
 add_test(NAME test_setivkey_perf COMMAND test_setivkey_perf)
 
+# Test: test_move_array - Verify move_array correctness
+add_executable(test_move_array test/test_move_array.cpp ${TEST_COMMON})
+apply_common_opts(test_move_array)
+add_test(NAME test_move_array COMMAND test_move_array)
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+# ...existing code...
+
 message(STATUS "Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER}")
 message(STATUS "ENABLE_AVX2=${ENABLE_AVX2}, ENABLE_LTO=${ENABLE_LTO}, USE_LLD=${USE_LLD}")
 message(STATUS "PGO generate=${ENABLE_PGO_GENERATE}, PGO use=${ENABLE_PGO_USE}")

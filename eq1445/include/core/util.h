@@ -502,3 +502,64 @@ static inline void debug_print_rss(const char *tag)
     size_t kb = peak_rss_kb();
     std::cout << "[RSS] " << tag << " VmRSS=" << kb << " kB\n";
 }
+
+// ...existing code...
+/**
+ * @brief Move a LayerVec's data to a new offset within the same memory block.
+ * 
+ * This function assumes:
+ * 1. The source vector's data starts at `base`.
+ * 2. The memory block at `base` is large enough to hold the data at `base + offset`.
+ * 3. T is trivially default constructible (POD), so resizing the new vector doesn't overwrite data.
+ * 
+ * @param src_vec The source vector to move.
+ * @param offset The offset in bytes to move the data to (relative to src_vec.data()).
+ * @param new_capacity_bytes The capacity in bytes for the new vector. If 0, defaults to current size (L).
+ * @return A new LayerVec initialized at `src_vec.data() + offset` containing the moved data.
+ */
+template <typename T>
+inline LayerVec<T> move_array(LayerVec<T> &src_vec, size_t offset, size_t new_capacity_bytes = 0)
+{
+    T *src = src_vec.data();
+    size_t n = src_vec.size();
+    size_t L = n * sizeof(T);
+
+    if (new_capacity_bytes == 0)
+    {
+        new_capacity_bytes = L;
+    }
+
+    uint8_t *base = reinterpret_cast<uint8_t *>(src);
+
+    // Destination pointer
+    uint8_t *dst = base + offset;
+
+    // Move memory
+    if (n > 0 && offset > 0)
+    {
+        if (offset >= L)
+        {
+            // No overlap, use memcpy for potentially better performance
+            std::memcpy(dst, src, L);
+        }
+        else
+        {
+            // Overlap, must use memmove
+            std::memmove(dst, src, L);
+        }
+    }
+
+    // Initialize new vector at the new location
+    // We use init_layer logic: create allocator at dst
+    LayerVec<T> new_vec = init_layer<T>(dst, new_capacity_bytes);
+    
+    // Resize to n. 
+    // Since T is trivially default constructible (POD), and MemAllocator::construct 
+    // is specialized to do nothing for PODs, this will NOT overwrite the data we just moved.
+    new_vec.resize(n);
+
+    // Clear the old vector to avoid confusion
+    src_vec.resize(0);
+
+    return new_vec;
+}

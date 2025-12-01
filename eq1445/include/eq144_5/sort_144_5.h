@@ -341,22 +341,26 @@ inline void SetIV_Key(int seed, IndexVectorKey<EquihashParams::kIndexBytes, Laye
     SetIV_Key_Fast<Layer, KeyBits, KeyType>(H, ivkey);
 }
 
-struct CachedHasher {
-    ZcashEquihashHasher& H;
-    uint32_t last_pair_idx;
+// Simple cached hasher to avoid re-computing Blake2b for adjacent indices sharing the same hash block
+struct CachedHasher
+{
+    ZcashEquihashHasher &H;
+    uint32_t last_pair_idx = 0xFFFFFFFF;
     uint8_t last_out[ZcashEquihashHasher::OUT_LEN];
-    bool valid;
 
-    CachedHasher(ZcashEquihashHasher& h) : H(h), last_pair_idx(0xFFFFFFFF), valid(false) {}
+    CachedHasher(ZcashEquihashHasher &h) : H(h) {}
 
-    void hash_index(uint32_t pair_idx, uint8_t* out) {
-        if (valid && pair_idx == last_pair_idx) {
+    void hash_index(uint32_t pair_idx, uint8_t *out)
+    {
+        if (pair_idx == last_pair_idx)
+        {
             std::memcpy(out, last_out, ZcashEquihashHasher::OUT_LEN);
-        } else {
-            H.hash_index(pair_idx, last_out);
+        }
+        else
+        {
+            H.hash_index(pair_idx, out);
             last_pair_idx = pair_idx;
-            valid = true;
-            std::memcpy(out, last_out, ZcashEquihashHasher::OUT_LEN);
+            std::memcpy(last_out, out, ZcashEquihashHasher::OUT_LEN);
         }
     }
 };
@@ -378,12 +382,14 @@ inline void SetIV_Key_Batch(int seed, LayerVec<IndexVectorKey<EquihashParams::kI
                     EquihashParams::N,
                     EquihashParams::K);
 
-    CachedHasher CH(H);
+    CachedHasher cachedH(H);
+
     for (auto &ivkey : layer)
     {
-        SetIV_Key_Fast<Layer, KeyBits, KeyType>(CH, ivkey);
+        SetIV_Key_Fast<Layer, KeyBits, KeyType>(cachedH, ivkey);
     }
 }
+
 
 // Key extraction for IV_Key (no computation needed - just return the stored key)
 template <size_t Layer, typename KeyType>

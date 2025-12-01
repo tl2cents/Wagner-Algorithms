@@ -369,15 +369,15 @@ uint64_t advanced_cip_pr_peak_memory(int h)
  *    - Part 1: Item0...Item{h} are all smaller than Layer3_IDX (13 bytes vs 22,19,16,13)
  *    - Part 2: Layer{h}_IDX...Layer{K-1}_IDX shrink monotonically (e.g., 16→13→10 bytes)
  *    - Peak: Layer3_IDX at 13+4=17 bytes per item (not Layer0_IDX at 26 bytes)
- * 
+ *
  * 2. IP storage allocation (backwards from buffer end):
  *    - Stores (K-1-h) IP arrays: IP{h+1}, IP{h+2}, ..., IP{K-1}
  *    - First generated IP{h+1} placed at rightmost: base_end - (K-1-h)*MAX_IP_MEM_BYTES
  *    - Last generated IP{K-1} placed at leftmost: base_end - 1*MAX_IP_MEM_BYTES
  *    - Example (h=1): IP2 at base_end-3*MAX_IP, IP3 at base_end-2*MAX_IP, IP4 at base_end-1*MAX_IP
- * 
+ *
  * 3. IP5 reuses layer buffer: After L4_IDX is cleared, IP5 occupies [0, MAX_IP_MEM_BYTES)
- * 
+ *
  * 4. Memory lower bound: max(Layer3_IDX_size + IP_storage, MAX_ITEM_MEM_BYTES)
  *    - Ensures recover_IP() has sufficient space (may use Layer0_IDX for h=1 recovery)
  *
@@ -747,4 +747,21 @@ std::vector<Solution> run_advanced_cip_pr(int seed, int h, uint8_t *base)
         std::cerr << "Unsupported switching height: " << h << " (must be 0-4 for Equihash 144,5)" << std::endl;
         return {};
     }
+}
+
+std::vector<Solution> run_advanced_cip_pr(int seed, uint8_t *base)
+{
+    size_t total_mem = 2 * MAX_ITEM_MEM_BYTES;
+    bool own_base = false;
+    if (base == nullptr)
+    {
+        base = static_cast<uint8_t *>(std::malloc(total_mem));
+        own_base = true;
+    }
+    IFV
+    {
+        std::cout << "Total memory allocated (MB): " << total_mem / (1024 * 1024) << std::endl;
+    }
+    uint8_t *base_end = base + total_mem;
+    
 }
