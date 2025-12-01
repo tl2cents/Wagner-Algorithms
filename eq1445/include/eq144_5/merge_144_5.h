@@ -478,6 +478,7 @@ inline void sort24_IVKey2(Layer2_IVKey &layer, int seed) { sort24_IVKey<2>(layer
 inline void sort24_IVKey3(Layer3_IVKey &layer, int seed) { sort24_IVKey<3>(layer, seed); }
 inline void sort48_IVKey4(Layer4_IVKey &layer, int seed) { sort48_IVKey<4>(layer, seed); }
 
+// ...existing code...
 // IV_Key merge wrapper functions
 inline void merge0_ivkey_layer(Layer0_IVKey &s, Layer1_IVKey &d, int seed)
 {
@@ -486,6 +487,142 @@ inline void merge0_ivkey_layer(Layer0_IVKey &s, Layer1_IVKey &d, int seed)
                               uint32_t, getKey24_IVKey0,
                               static_cast<bool (*)(int, const IVKey1_24 &)>(nullptr)>(s, d, seed);
 }
+
+// Helper to merge two IVKeys into an IV (dropping the key)
+template <std::size_t INDEX_BYTES, std::size_t LAYER, typename KeyType>
+inline IndexVector<INDEX_BYTES, LAYER + 1> merge_ivkey_to_iv(
+    const IndexVectorKey<INDEX_BYTES, LAYER, KeyType> &a,
+    const IndexVectorKey<INDEX_BYTES, LAYER, KeyType> &b)
+{
+    IndexVector<INDEX_BYTES, LAYER + 1> result;
+    constexpr std::size_t half_bytes = INDEX_BYTES * (1ULL << LAYER);
+    std::memcpy(result.indices, a.indices, half_bytes);
+    std::memcpy(result.indices + half_bytes, b.indices, half_bytes);
+    return result;
+}
+
+// Generic function to merge IVKey layer into IV layer
+template <typename SrcIVKey, typename DstIV,
+          DstIV (*merge_func)(const SrcIVKey &, const SrcIVKey &),
+          void (*sort_func)(LayerVec<SrcIVKey> &, int),
+          typename KeyType,
+          KeyType (*get_key_func)(int, const SrcIVKey &)>
+inline void merge_ivkey_for_iv_layer_generic(LayerVec<SrcIVKey> &src_arr, LayerVec<DstIV> &dst_arr, int seed)
+{
+    if (src_arr.empty()) return;
+
+    // 1. Sort by key (using precomputed keys in IVKey)
+    sort_func(src_arr, seed);
+
+    const size_t N = src_arr.size();
+    size_t avail_dst = dst_arr.capacity() - dst_arr.size();
+
+    size_t i = 0;
+    while (i < N)
+    {
+        // Find group with same key
+        const size_t group_start = i;
+        const KeyType key0 = get_key_func(seed, src_arr[group_start]);
+        i++;
+        while (i < N && get_key_func(seed, src_arr[i]) == key0)
+            ++i;
+        const size_t group_end = i;
+
+        // Generate pairs
+        for (size_t j1 = group_start; j1 < group_end; ++j1)
+        {
+            for (size_t j2 = j1 + 1; j2 < group_end; ++j2)
+            {
+                if (dst_arr.size() >= avail_dst) break;
+                dst_arr.push_back(merge_func(src_arr[j1], src_arr[j2]));
+            }
+            if (dst_arr.size() >= avail_dst) break;
+        }
+        if (dst_arr.size() >= avail_dst) break;
+    }
+}
+
+// Wrapper for Layer 0 -> Layer 1 (IVKey -> IV)
+inline IV1 merge_ivkey0_to_iv1(const IVKey0_24 &a, const IVKey0_24 &b)
+{
+    return merge_ivkey_to_iv<EquihashParams::kIndexBytes, 0, uint32_t>(a, b);
+}
+
+inline void merge0_ivkey_for_iv_layer(Layer0_IVKey &s, Layer1_IV &d, int seed)
+{
+    merge_ivkey_for_iv_layer_generic<IVKey0_24, IV1,
+                                     merge_ivkey0_to_iv1, sort24_IVKey0,
+                                     uint32_t, getKey24_IVKey0>(s, d, seed);
+}
+
+// Wrapper for Layer 1 -> Layer 2 (IVKey -> IV)
+inline IV2 merge_ivkey1_to_iv2(const IVKey1_24 &a, const IVKey1_24 &b)
+{
+    return merge_ivkey_to_iv<EquihashParams::kIndexBytes, 1, uint32_t>(a, b);
+}
+
+inline void merge1_ivkey_for_iv_layer(Layer1_IVKey &s, Layer2_IV &d, int seed)
+{
+    merge_ivkey_for_iv_layer_generic<IVKey1_24, IV2,
+                                     merge_ivkey1_to_iv2, sort24_IVKey1,
+                                     uint32_t, getKey24_IVKey1>(s, d, seed);
+}
+
+// Wrapper for Layer 2 -> Layer 3 (IVKey -> IV)
+inline IV3 merge_ivkey2_to_iv3(const IVKey2_24 &a, const IVKey2_24 &b)
+{
+    return merge_ivkey_to_iv<EquihashParams::kIndexBytes, 2, uint32_t>(a, b);
+}
+
+inline void merge2_ivkey_for_iv_layer(Layer2_IVKey &s, Layer3_IV &d, int seed)
+{
+    merge_ivkey_for_iv_layer_generic<IVKey2_24, IV3,
+                                     merge_ivkey2_to_iv3, sort24_IVKey2,
+                                     uint32_t, getKey24_IVKey2>(s, d, seed);
+}
+
+// Wrapper for Layer 3 -> Layer 4 (IVKey -> IV)
+inline IV4 merge_ivkey3_to_iv4(const IVKey3_24 &a, const IVKey3_24 &b)
+{
+    return merge_ivkey_to_iv<EquihashParams::kIndexBytes, 3, uint32_t>(a, b);
+}
+
+inline void merge3_ivkey_for_iv_layer(Layer3_IVKey &s, Layer4_IV &d, int seed)
+{
+    merge_ivkey_for_iv_layer_generic<IVKey3_24, IV4,
+                                     merge_ivkey3_to_iv4, sort24_IVKey3,
+                                     uint32_t, getKey24_IVKey3>(s, d, seed);
+}
+
+// Wrapper for Layer 4 -> Layer 5 (IVKey -> IV)
+inline IV5 merge_ivkey4_to_iv5(const IVKey4_48 &a, const IVKey4_48 &b)
+{
+    return merge_ivkey_to_iv<EquihashParams::kIndexBytes, 4, uint64_t>(a, b);
+}
+
+inline void merge4_ivkey_for_iv_layer(Layer4_IVKey &s, Layer5_IV &d, int seed)
+{
+    merge_ivkey_for_iv_layer_generic<IVKey4_48, IV5,
+                                     merge_ivkey4_to_iv5, sort48_IVKey4,
+                                     uint64_t, getKey48_IVKey4>(s, d, seed);
+}
+
+// Template wrapper for indexed IVKey -> IV merge access
+template<size_t I>
+inline void merge_ivkey_for_iv_layer(
+    Layer0_IVKey &s0, Layer1_IV &d1,
+    Layer1_IVKey &s1, Layer2_IV &d2,
+    Layer2_IVKey &s2, Layer3_IV &d3,
+    Layer3_IVKey &s3, Layer4_IV &d4,
+    Layer4_IVKey &s4, Layer5_IV &d5,
+    int seed) {
+    if constexpr (I == 0) merge0_ivkey_for_iv_layer(s0, d1, seed);
+    else if constexpr (I == 1) merge1_ivkey_for_iv_layer(s1, d2, seed);
+    else if constexpr (I == 2) merge2_ivkey_for_iv_layer(s2, d3, seed);
+    else if constexpr (I == 3) merge3_ivkey_for_iv_layer(s3, d4, seed);
+    else if constexpr (I == 4) merge4_ivkey_for_iv_layer(s4, d5, seed);
+}
+
 inline void merge1_ivkey_layer(Layer1_IVKey &s, Layer2_IVKey &d, int seed)
 {
     merge_ivkey_layer_generic<IVKey1_24, IVKey2_24,

@@ -210,6 +210,11 @@ add_executable(test_move_array test/test_move_array.cpp ${TEST_COMMON})
 apply_common_opts(test_move_array)
 add_test(NAME test_move_array COMMAND test_move_array)
 
+# Test: test_ivkey_to_iv - Verify merge_ivkey_for_iv_layer correctness
+add_executable(test_ivkey_to_iv test/test_ivkey_to_iv.cpp ${TEST_COMMON})
+apply_common_opts(test_ivkey_to_iv)
+add_test(NAME test_ivkey_to_iv COMMAND test_ivkey_to_iv)
+
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # ...existing code...
 
