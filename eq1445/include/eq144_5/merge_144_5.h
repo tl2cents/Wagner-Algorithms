@@ -343,7 +343,6 @@ inline void merge_iv_layer_optimized(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &
         while (i < N && get_iv_key_bits_fast<Layer, KeyBits>(cachedH, src_arr[i]) == key0)
             ++i;
         const size_t group_end = i;
-// ...existing code...
         const size_t group_size = group_end - group_start;
 
         if constexpr (discard_zero)
@@ -402,7 +401,7 @@ inline void merge_iv_layer_optimized(LayerVec<SrcIV> &src_arr, LayerVec<DstIV> &
 }
 
 // IV merge wrapper functions
-inline void merge0_iv_inplace(Layer0_IV &s, Layer1_IV &d, int seed)
+inline void merge0_iv_layer(Layer0_IV &s, Layer1_IV &d, int seed)
 {
     merge_iv_layer_optimized<IV0, IV1, merge_iv0, 0, EQ1445_COLLISION_BITS, uint32_t, false>(s, d, seed);
 }
@@ -426,7 +425,7 @@ inline void merge4_iv_layer(Layer4_IV &s, Layer5_IV &d, int seed)
 // Template wrapper for indexed IV merge access
 template<size_t I>
 inline void merge_iv_layer(LayerIV<I> &s, LayerIV<I+1> &d, int seed) {
-    if constexpr (I == 0) merge0_iv_inplace(s, d, seed);
+    if constexpr (I == 0) merge0_iv_layer(s, d, seed);
     else if constexpr (I == 1) merge1_iv_layer(s, d, seed);
     else if constexpr (I == 2) merge2_iv_layer(s, d, seed);
     else if constexpr (I == 3) merge3_iv_layer(s, d, seed);
