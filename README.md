@@ -25,26 +25,24 @@ We propose two new techniques to optimize Wagner's algorithms:
 - **Improved Index-Trimming Technique**: Reduces memory usage by trimming indexes for both the single-chain and $k$-tree algorithms implemented with index vectors.
 - **Post-Retrival Technique**: Reduces memory usage by reconstructing the index pointers for single-chain algorithm implemented with index pointers. It's not memory-efficient for the $k$-tree algorithm.
 
-All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`$ framework. Theoretically, our techniques can reduce the peak memory usage of Wagner's algorithm by half (from $`2nN`$ to $`nN`$ bits) across most parameter settings, while incurring no more than a twofold time penalty. Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits) at the cost of additional computational overhead.
+All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`$ framework. Theoretically, our techniques can reduce the peak memory usage of Wagner's algorithm by half (from $`2nN`$ to $`nN`$ bits) across most parameter settings, while incurring no more than a twofold time penalty. Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits) at the cost of additional computational overhead. For example, under the hybrid technique, the optimal parameter choices are as follows.
 
-For all optimization techniques, we provide Python-based proof-of-concept implementations to validate their theoretical correctness. In the subdirectory [python-poc](./python-poc/), we include concrete estimators that compute optimal parameter choices for Wagner’s algorithm under various memory constraints and parameter settings.  For example, under the index-trimming technique, the optimal parameter choices are as follows.
-
-| (n,k)   | trimmed_length | peak_mem  | total_runtime      | switching_height1 | peak_mem1  | runtime1     | peak_layer1 | switching_height2 | peak_mem2  | runtime2     | peak_layer2 | activating_height |
-|----------|----------------|-----------|--------------|-------------------:|-----------:|--------------:|------------:|-------------------:|-----------:|--------------:|------------:|------------------:|
-| (96, 5)  | 1              | 2^23.09   | 2.30 * T0    | 2                  | 2^23.09    | 1.40 * T0    | 2           | 2                  | 2^23.04    | 0.90 * T0    | 2           | 2                 |
-| (128,7) | 1              | 2^23.58   | 3.15 * T0    | 3                  | 2^23.58    | 1.86 * T0    | 6           | 3                  | 2^23.09    | 1.29 * T0    | 2           | 3                 |
-| (160,9) | 1              | 2^25.17   | 1.36 * T0    | 0                  | 2^25.17    | 1.00 * T0    | 8           | 0                  | 2^24.61    | 0.36 * T0    | 2           | 3                 |
-| (96, 3)  | 1              | 2^30.70   | 3.04 * T0    | 2                  | 2^30.70    | 1.67 * T0    | 2           | 2                  | 2^30.64    | 1.37 * T0    | 1           | 2                 |
-| (144,5) | 1              | 2^31.64   | 2.30 * T0    | 2                  | 2^31.64    | 1.40 * T0    | 2           | 2                  | 2^31.61    | 0.90 * T0    | 2           | 2                 |
-| (150,5) | 1              | 2^32.70   | 2.30 * T0    | 2                  | 2^32.70    | 1.40 * T0    | 2           | 2                  | 2^32.67    | 0.90 * T0    | 2           | 2                 |
-| (192,7) | 1              | 2^32.00   | 3.15 * T0    | 3                  | 2^32.00    | 1.86 * T0    | 3           | 3                  | 2^31.64    | 1.29 * T0    | 2           | 3                 |
-| (240,9) | 1              | 2^33.25   | 1.36 * T0    | 0                  | 2^33.25    | 1.00 * T0    | 8           | 0                  | 2^33.19    | 0.36 * T0    | 2           | 3                 |
-| (96, 2)  | 1              | 2^39.04   | 1.75 * T0    | 1                  | 2^39.04    | 1.00 * T0    | 1           | 1                  | 2^39.02    | 0.75 * T0    | 1           | 1                 |
-| (288,8) | 1              | 2^40.64   | 2.89 * T0    | 3                  | 2^40.64    | 1.75 * T0    | 3           | 3                  | 2^40.04    | 1.14 * T0    | 2           | 3                 |
-| (200,9) | 1              | 2^29.21   | 1.36 * T0    | 0                  | 2^29.21    | 1.00 * T0    | 8           | 0                  | 2^28.93    | 0.36 * T0    | 2           | 3                 |
+| (n,k)   | plain peak mem | peak mem | runtime     | switching height1 | switching height2 | peak layer |
+|---------|---------------:|---------:|------------:|------------------:|------------------:|-----------:|
+| (96, 5)  | 2^24.39       | 2^23.04 | 3.8 * T0   | 1                 | 3                 | 4          |
+| (128,7) | 2^24.88       | 2^23.64 | 3.9 * T0   | 1                 | 4                 | 6          |
+| (160,9) | 2^25.25       | 2^24.07 | 4.0 * T0   | 1                 | 5                 | 8          |
+| (96, 3)  | 2^32.21       | 2^30.64 | 4.0 * T0   | 1                 | 2                 | 1          |
+| (144,5) | 2^32.95       | 2^31.61 | 3.8 * T0   | 1                 | 3                 | 4          |
+| (150,5) | 2^34.01       | 2^32.67 | 3.8 * T0   | 1                 | 3                 | 4          |
+| (192,7) | 2^33.44       | 2^32.21 | 3.9 * T0   | 1                 | 4                 | 6          |
+| (240,9) | 2^33.81       | 2^32.63 | 4.0 * T0   | 1                 | 5                 | 8          |
+| (96, 2)  | 2^40.02       | 2^39.00 | 1.5 * T0   | 0                 | 1                 | 1          |
+| (288,8) | 2^42.04       | 2^41.00 | 2.9 * T0   | 0                 | 5                 | 1          |
+| (200,9) | 2^29.55       | 2^28.38 | 4.0 * T0   | 1                 | 5                 | 8          |
 
 
-More resluts are available in [python-poc](./python-poc/).
+More estimators and resluts are available in [python-poc](./python-poc/).
 
 
 ## Implementations
@@ -84,6 +82,6 @@ For the parameter setting $`\textsf{Equihash}(200, 9)`$, a subset of our optimiz
 
 
 **Remark.** As the runner-up in the Zcash miner optimization contest (see https://zcashminers.org/submissions), Tromp’s implementation of $`\textsf{Equihash}(200,9)`$ incorporates numerous carefully engineered optimizations, including the choice of near-optimal bucket sizes, layer-specific tuning of $`\textsf{merge}`$ functions, and compact index-pointer representations. The winning implementation applied even more aggressive low-level optimizations, such as hand-crafted assembly and architecture-specific tuning.
-In contrast, our work does not aim to produce a highly optimized or practically competitive $`\textsf{Equihash}`$ solver. Instead, our goal is to demonstrate the effectiveness of the new algorithmic techniques introduced in this paper. Accordingly, our implementation uses straightforward C++ templates without architecture-specific or assembly-level optimizations, yet it already achieves performance reasonably close to existing optimized implementations.
+In contrast, our work does not aim to produce a highly optimized or practically competitive $`\textsf{Equihash}`$ solver. This performance gap is therefore **an engineering issue rather than a conceptual one**. Our implementation is sufficient to demonstrate the effectiveness of the new algorithmic techniques proposed in this work, and the results clearly validate the improvements our methods bring.
 
-> The current implementations of the sorting algorithm and the linear-scan procedure still have substantial room for optimization, which explains the noticeable performance gap between the standard $\textsf{CIP}$ implementation and Tromp’s implementation (CIP). Further details can be found in the directory [advanced-cip](./advanced-cip/).
+> The current implementations of the sorting algorithm and the linear-scan procedure still have substantial room for optimization, which explains the noticeable performance gap between the standard $\textsf{CIP}$ implementation and Tromp’s implementation (CIP). Further details can be found in the directory [eq2009](./eq2009/).
