@@ -59,13 +59,12 @@ For the parameter setting $`\textsf{Equihash}(144, 5)`$, a subset of our optimiz
 For the parameter setting $`\textsf{Equihash}(200, 9)`$, a subset of our optimization results is shown below (serving only as a proof of concept).
 
 | Algorithm      | Sol/s | Peak USS (MB) |
-| -------------- | -----:| --------------:|
-| CIP            | 2.27  | 157.18        |
-| CIP-PR         | 0.51  | 58.26         |
-| CIP-EM         | 2.06  | 57.37         |
-| CIP-APR-5      | 0.88  | 63.05         |
-| Tromp-Equix41  | 9.01  | 144.24        |
-
+| -------------- | ----- | ------------- |
+| CIP            | 2.12  | 155.82        |
+| CIP-PR         | 0.44  | 58.24         |
+| CIP-EM         | 1.93  | 58.67         |
+| CIP-APR        | 0.74  | 63.11         |
+| Tromp-Equi1    | 6.30  | 145.54        |
 
 **Remark.** As the runner-up in the Zcash miner optimization contest (see https://zcashminers.org/submissions), Tromp’s implementation of $`\textsf{Equihash}(200,9)`$ incorporates numerous carefully engineered optimizations, including the choice of near-optimal bucket sizes, layer-specific tuning of $`\textsf{merge}`$ functions, and compact index-pointer representations. The winning implementation applied even more aggressive low-level optimizations, such as hand-crafted assembly and architecture-specific tuning.
 In contrast, our work does not aim to produce a highly optimized or practically competitive $`\textsf{Equihash}`$ solver. This performance gap is therefore **an engineering issue rather than a conceptual one**. Our implementation is sufficient to demonstrate the effectiveness of the new algorithmic techniques proposed in this work, and the results clearly validate the improvements our methods bring.
