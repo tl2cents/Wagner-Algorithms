@@ -47,10 +47,10 @@ For the parameter setting $`\textsf{Equihash}(144, 5)`$, a subset of our optimiz
 
 | Algorithm      | Sol/s | Avg single run (s) | Total solutions | Peak USS (MB) |
 | -------------- | -----:| ------------------: | ---------------:| --------------:|
-| CIP            | 0.23  | 8.78               | 198             | 1732.92       |
-| CIP-PR         | 0.08  | 25.83              | 198             | 707.20        |
-| CIP-EM         | 0.21  | 9.27               | 198             | 707.53        |
-| Tromp-Baseline | 0.22  | 8.32               | 190             | 2569.70       |
+| CIP            | 0.23  | 8.50               | 198             | 1733.00       |
+| CIP-PR         | 0.08  | 25.24              | 198             | 706.69        |
+| CIP-EM         | 0.22  | 9.17               | 198             | 707.45        |
+| Tromp-Baseline | 0.20  | 9.20               | 190             | 2569.71       |
 
 > Notes: "Avg single run (s)" is the average per-iteration runtime reported by the benchmark (for Tromp the total time was divided by 100 iterations to obtain the per-run average).
 
