@@ -1,22 +1,6 @@
 # Wagner-Algorithms
 
-New memory optimizations for Wagner's algorithms and Equihash accompanies the paper: "New Memory Optimizations of Wagner’s Algorithms via List Item Reduction". Wagner’s single-chain algorithm and the $k$-tree algorithm can be used to solve the generalized birthday problem and its regular variant, respectively. We define them as follows.
-
-**Definition. *Loose Generalized Birthday Problem.*** $\textsf{LGBP}(n, K)$: Given a list $L$ containing random $n$-bit values, the loose generalized birthday problem involves finding $x_1, \ldots, x_K \in L$ such that 
-
-$$
-x_1 \oplus x_2 \oplus \cdots \oplus x_K = 0.
-$$
-
-**Definition. *Regular Generalized Birthday Problem.*** $\textsf{RGBP}(n, K)$: Given $K$ lists $L_1, \ldots, L_K$ containing random $n$-bit values, the strict generalized birthday problem involves finding $x_1 \in L_1, \ldots, x_K \in L_K$ such that 
-
-$$
-x_1 \oplus x_2 \oplus \cdots \oplus x_K = 0.
-$$
-
-> **Remark.** $\textsf{LGBP}(n, K)$ is also known as $\textsf{Equihash}$, which is a popular memory-hard proof-of-work based on the single-chain algorithm used in various cryptocurrencies.
-
-
+New memory optimizations for Wagner's algorithms and Equihash accompanying the paper: "New Memory Optimizations of Wagner’s Algorithms via List Item Reduction". 
 
 ## New Memory Optimizations of Wagner's Algorithms
 
@@ -25,8 +9,10 @@ We propose two new techniques to optimize Wagner's algorithms:
 - **Improved Index-Trimming Technique**: Reduces memory usage by trimming indexes for both the single-chain and $k$-tree algorithms implemented with index vectors.
 - **Post-Retrival Technique**: Reduces memory usage by reconstructing the index pointers for single-chain algorithm implemented with index pointers. It's not memory-efficient for the $k$-tree algorithm.
 
-All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`$ framework. Theoretically, our techniques can reduce the peak memory usage of Wagner's algorithm by half (from $`2nN`$ to $`nN`$ bits) across most parameter settings, while incurring no more than a twofold time penalty. Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits) at the cost of additional computational overhead. For example, under the hybrid technique, the optimal parameter choices are as follows.
+All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`$ framework. Theoretically, our techniques can reduce the peak memory usage of Wagner's algorithm by half (from $`2nN`$ to $`nN`$ bits) across most parameter settings, while incurring no more than a twofold time penalty. Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits) at the cost of additional computational overhead. 
 
+<!-- 
+For example, under the hybrid technique, the optimal parameter choices are as follows.
 | (n,k)   | plain peak mem | peak mem | runtime     | switching height1 | switching height2 | peak layer |
 |---------|---------------:|---------:|------------:|------------------:|------------------:|-----------:|
 | (96, 5)  | 2^24.39       | 2^23.04 | 3.8 * T0   | 1                 | 3                 | 4          |
@@ -39,11 +25,11 @@ All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`
 | (240,9) | 2^33.81       | 2^32.63 | 4.0 * T0   | 1                 | 5                 | 8          |
 | (96, 2)  | 2^40.02       | 2^39.00 | 1.5 * T0   | 0                 | 1                 | 1          |
 | (288,8) | 2^42.04       | 2^41.00 | 2.9 * T0   | 0                 | 5                 | 1          |
-| (200,9) | 2^29.55       | 2^28.38 | 4.0 * T0   | 1                 | 5                 | 8          |
+| (200,9) | 2^29.55       | 2^28.38 | 4.0 * T0   | 1                 | 5                 | 8          | 
+-->
 
 
-More estimators and resluts are available in [python-poc](./python-poc/).
-
+More estimators and resluts are available in [python-poc](./python-poc/). A lower–time-penalty implementation can be found in the next section.
 
 ## Implementations
 
