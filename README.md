@@ -51,6 +51,7 @@ More resluts are available in [python-poc](./python-poc/).
 
 Our implementation serves solely as a proof of concept and does not incorporate aggressive low-level optimizations. We also note that these optimizations may significantly impact the ASIC-resistance of existing blockchains that rely on $`\textsf{Equihash}`$. We therefore recommend that such blockchains reassess the memory bottlenecks of ASIC implementations across all $`\textsf{Equihash}`$ parameter settings. 
 
+![apr-time-mem](./apr-time-mem.svg)
 
 
 
@@ -58,12 +59,12 @@ Our implementation serves solely as a proof of concept and does not incorporate 
 
 For the parameter setting $`\textsf{Equihash}(144, 5)`$, a subset of our optimization results is shown below (serving only as a proof of concept). Our implementations outperform Tromp's baseline implementation (CIP) in both time and memory usage.
 
-| Algorithm      | Sol/s | Avg single run (s) | Total solutions | Peak RSS (kB) | Peak USS (kB) |
-| -------------- | -----:| ------------------: | ---------------:| -------------:| -------------:|
-| CIP            | 0.20  | 10.15              | 198             | 1774464       | 1772900       |
-| CIP-PR         | 0.06  | 31.81              | 198             | 724480        | 722892        |
-| CIP-EM         | 0.18  | 10.98              | 198             | 725092        | 723440        |
-| Tromp-Eq14451  | 0.19  | 9.76               | 190             | 2633344       | 2631388       |
+| Algorithm      | Sol/s | Avg single run (s) | Total solutions | Peak USS (MB) |
+| -------------- | -----:| ------------------: | ---------------:| --------------:|
+| CIP            | 0.23  | 8.78               | 198             | 1732.92       |
+| CIP-PR         | 0.08  | 25.83              | 198             | 707.20        |
+| CIP-EM         | 0.21  | 9.27               | 198             | 707.53        |
+| Tromp-Baseline | 0.22  | 8.32               | 190             | 2569.70       |
 
 > Notes: "Avg single run (s)" is the average per-iteration runtime reported by the benchmark (for Tromp the total time was divided by 100 iterations to obtain the per-run average).
 
@@ -73,13 +74,13 @@ For the parameter setting $`\textsf{Equihash}(144, 5)`$, a subset of our optimiz
 
 For the parameter setting $`\textsf{Equihash}(200, 9)`$, a subset of our optimization results is shown below (serving only as a proof of concept).
 
-| Algorithm      | Sol/s | Peak RSS (kB) | Peak USS (kB) | Peak USS (MB) |
-| -------------- | ----- | ------------- | ------------- | ------------- |
-| CIP            | 2.27  | 162,304       | 160,952       | 157.18        |
-| CIP-PR         | 0.51  | 61,056        | 59,660        | 58.26         |
-| CIP-EM         | 2.06  | 61,576        | 58,748        | 57.37         |
-| CIP-APR        | 0.88  | 66,048        | 64,568        | 63.05         |
-| Tromp-Equix41  | 9.01  | 150,400       | 147,700       | 144.24        |
+| Algorithm      | Sol/s | Peak USS (MB) |
+| -------------- | -----:| --------------:|
+| CIP            | 2.27  | 157.18        |
+| CIP-PR         | 0.51  | 58.26         |
+| CIP-EM         | 2.06  | 57.37         |
+| CIP-APR-5      | 0.88  | 63.05         |
+| Tromp-Equix41  | 9.01  | 144.24        |
 
 
 **Remark.** As the runner-up in the Zcash miner optimization contest (see https://zcashminers.org/submissions), Tromp’s implementation of $`\textsf{Equihash}(200,9)`$ incorporates numerous carefully engineered optimizations, including the choice of near-optimal bucket sizes, layer-specific tuning of $`\textsf{merge}`$ functions, and compact index-pointer representations. The winning implementation applied even more aggressive low-level optimizations, such as hand-crafted assembly and architecture-specific tuning.
