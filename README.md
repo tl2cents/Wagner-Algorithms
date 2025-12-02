@@ -37,9 +37,7 @@ Our implementation serves solely as a proof of concept and does not incorporate 
 
 ### Advanced Post-Retrieval with Different Switching Heights
 
-<p align="center">
-	<img src="./apr-time-mem.svg" alt="Advanced Post-Retrieval Trade-off Curves with Different Switching Heights" />
-</p>
+![apr-time-mem](./apr-time-mem.svg)
 
 > Details are available in the directories [eq1445](./eq1445/).
 
