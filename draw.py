@@ -52,9 +52,9 @@ for row, PARAM in enumerate(PARAMS):
     runtime_theory_penalty = runtime_theory / T0_theory
 
     ax_time = ax[row, 0]
-    ax_time.plot(h_list, runtime_exp_penalty, "o-", label="Our impl",
+    ax_time.plot(h_list, runtime_exp_penalty, "o-", label="Our Impl.",
                  color="#EE2A25", linewidth=2.0)
-    ax_time.plot(h_list, runtime_theory_penalty, "s--", label="Theory",
+    ax_time.plot(h_list, runtime_theory_penalty, "s--", label="Our Theory",
                  color="#0076AA", linewidth=2.0)
 
     ax_time.set_title(rf"$\mathrm{{Equihash}}({n},{k})$ Time Penalty")
@@ -81,9 +81,9 @@ for row, PARAM in enumerate(PARAMS):
 
     # ---------------- Peak Memory Plot ----------------
     ax_mem = ax[row, 1]
-    ax_mem.plot(h_list, memory_exp, "o-", label="Our impl",
+    ax_mem.plot(h_list, memory_exp, "o-", label="Our Impl.",
                 color="#EE2A25", linewidth=2.0)
-    ax_mem.plot(h_list, memory_theory_MB, "s--", label="Theory",
+    ax_mem.plot(h_list, memory_theory_MB, "s--", label="Our Theory",
                 color="#0076AA", linewidth=2.0)
 
     # -------- SoTA (theory) 2nN line (segment aligned to points) --------
@@ -110,7 +110,7 @@ for row, PARAM in enumerate(PARAMS):
     )[0]
 
     # -------- Label for SoTA (impl) in MB (always MB) --------
-    label_text = f"y = {tromp_MB:.1f} MB"
+    label_text = f"M = {tromp_MB:.1f} MB"
 
     ax_mem.set_title(rf"$\mathrm{{Equihash}}({n},{k})$ Peak Memory")
     ax_mem.set_xlabel("h")
@@ -123,7 +123,7 @@ for row, PARAM in enumerate(PARAMS):
 
     # -------- Place labels after y-limits computed to avoid going outside axes --------
     # show theory with explicit value in MB
-    label_text_theory = f"y = 2nN ({best_MB:.1f} MB)"
+    label_text_theory = f"M = 2nN ({best_MB:.1f} MB)"
     y_theory_text = min(best_MB * 1.05, ymax1 * 0.98)
     # use same font size/style as impl label
     common_fs = 12
@@ -162,7 +162,7 @@ for row, PARAM in enumerate(PARAMS):
 
 # ---------------- Global Legend ----------------
 plt.tight_layout()
-plt.subplots_adjust(bottom=0.18)
+plt.subplots_adjust(bottom=0.22)
 
 lines = [
     ax[0, 0].lines[0],     # Our impl
@@ -171,7 +171,7 @@ lines = [
     sota_theory_line,      # SoTA (theory)
 ]
 
-labels = ["Our impl", "Theory", "State-of-the-Art (impl)", "State-of-the-Art (theory)"]
+labels = ["Our Impl.", "Our Theory", "State-of-the-Art (Impl.)", "State-of-the-Art (Theory)"]
 
 fig.legend(
     handles=lines,
