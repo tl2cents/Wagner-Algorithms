@@ -1,96 +1,41 @@
-# Inplace Merge Benchmark
-
-To reproduce the results in *Table 5* from the paper, run:
-
-```
-./run_merge.sh 0 2000 std
-./run_merge.sh 0 2000 kx
-```
-
-Benchmark results for the first merge in `Equihash(200,9)` using `kxsort` vs `std::sort` are as follows:
-
-| Metric | kx (Avg) | kx (Max) | std (Avg) | std (Max) |
-| :--- | :---: | :---: | :---: | :---: |
-| Sort time (s) | 0.0593 | 0.0651 | 0.1256 | 0.1358 |
-| Linear scan (s) | 0.0265 | 0.0329 | 0.0268 | 0.0333 |
-| Temp buffer (items) | 66.16 | 120 | 66.16 | 120 |
-| Peak USS (MB) | N/A | 51.55 | N/A | 51.59 |
-| Peak RSS (MB) | N/A | 53.00 | N/A | 53.25 |
-
-> The benchmarks were conducted on an Intel i7-13700K CPU with 64GB RAM running Ubuntu 22.04.5 LTS on WSL2 covering seeds from 0 to 1999. More details about the system configuration can be found in the next section.
-
-In [merge_in_place.py](./merge_in_place.py), we provided a Python implementation of in-place merge, along with many optimization insights. Note that for ease of implementation, our practical version uses a templated [kx-sort](https://github.com/voutcn/kxsort) with a fixed bucket size of 256. It is only about 2× faster than `std::sort`, which means there is still significant room for optimization. For more efficient sorting algorithms, please refer to the links included in [merge_in_place.py](./merge_in_place.py).
-
-## Equihash Parameter Configuration
-
-The C++ implementation now exposes a single header per Equihash parameter set. For the default build, including `eq200_9/equihash_200_9.h` gives you:
-
-1. `EquihashParams` – compile-time constants (layer widths, collision bits, list sizes, etc.).
-2. `Item0`..`Item9`, `Item*_IDX`, `Item_IP`, and the associated `Layer*` aliases spelled out for that parameter set only (no unused layers).
-3. Disk-manifest helpers (`IPDiskMeta`, `IPDiskManifest`) whose record size automatically matches the active `Item_IP` definition.
-
-To target a different `(n, k)` pair, copy `include/eq200_9/equihash_200_9.h`, adjust the numeric constants (including `kIndexBytes` when the IP representation changes), and include that new header instead. All other translation units only need to include your `eq<n>_<k>/equihash_<n>_<k>.h`; no additional configuration macros are required, and the shared modules (`core/merge.h`, `core/util.h`, etc.) will pick up the new settings automatically.
-
-
-# `Equihash(200,9)` CIP Proof-of-Concept Benchmark Results
-
-This document contains benchmark results for **post retrieval** and **external memory caching** implementations for `Equihash(200, 9)`, corresponding to *Table 6* in our paper.
-
----
-
 ## Benchmarks
 
 **System: Intel i7-13700K with 64GB RAM running Ubuntu 22.04.5 LTS on WSL2**
-
----
-
-### System Requirements
 
 * **CPU**: x86-64 processor with AVX2 support (required for BLAKE2b hashing)
 * **OS**: Linux (Ubuntu 20.04 LTS or later recommended), NOT tested on MacOS or Windows natively.
 * **Compiler**: GCC 9.0+ with C++20 support
 
-###  Configuration
-
-The benchmarks were executed using the script `./run.sh` with the following parameters:
-
-* **Iterations**: 2000 different nonces tested for each algorithm
-* **Starting Seed**: 0
-* **Seed Range**: 0-1999
-* **Execution Mode**: Single-threaded
-* **USS Monitor Interval**: 0.01 seconds
-
----
-
-### Benchmark Results
-
-
-> Running with plain BLAKE2b:
+> Running Equihash(200, 9):
 ``` bash
-./run.sh --iters 2000 --seed 0
+./run_apr_curve.sh --nk 200_9 --seed 0 --iters 1000
 ```
 
+| Height | Time (s) | Solutions | Sol/s | Peak USS (MB) |
+|--------:|---------:|----------:|------:|--------------:|
+| h=0    | 0.93     | 1875      | 2.02  | 123.9         |
+| h=1    | 1.15     | 1875      | 1.62  | 110.6         |
+| h=2    | 1.45     | 1875      | 1.30  | 99.8          |
+| h=3    | 1.79     | 1875      | 1.04  | 86.5          |
+| h=4    | 2.22     | 1875      | 0.85  | 74.2          |
+| h=5    | 2.70     | 1875      | 0.69  | 61.8          |
+| h=6    | 3.27     | 1875      | 0.57  | 60.8          |
+| h=7    | 3.89     | 1875      | 0.48  | 59.6          |
+| h=8    | 4.55     | 1875      | 0.41  | 56.9          |
 
-| Algorithm      | Sol/s | Peak RSS (kB) | Peak USS (kB) | Peak USS (MB) |
-| -------------- | ----- | ------------- | ------------- | ------------- |
-| CIP            | 2.12  | 162,304       | 159,560       | 155.82        |
-| CIP-PR         | 0.44  | 61,184        | 59,640        | 58.24         |
-| CIP-EM         | 1.93  | 61,440        | 60,080        | 58.67         |
-| CIP-APR        | 0.74  | 66,048        | 64,628        | 63.11         |
-| Tromp-Equi1    | 6.30  | 150,528       | 149,036       | 145.54        |
 
-
-> Running with 4-way BLAKE2b:
+> Running Equihash(144, 5):
 ``` bash
-./run.sh -x4 --iters 2000 --seed 0
+./run_apr_curve.sh --nk 144_5 --seed 0 --iters 300
 ```
-| Algorithm      | Sol/s | Peak RSS (kB) | Peak USS (kB) | Peak USS (MB) |
-| -------------- | ----- | ------------- | ------------- | ------------- |
-| CIP            | 2.27  | 162,304       | 160,952       | 157.18        |
-| CIP-PR         | 0.51  | 61,056        | 59,660        | 58.26         |
-| CIP-EM         | 2.06  | 61,576        | 58,748        | 57.37         |
-| CIP-APR        | 0.88  | 66,048        | 64,568        | 63.05         |
-| Tromp-Equix41  | 9.01  | 150,400       | 147,700       | 144.24        |
+
+| Height | Time (s) | Solutions | Sol/s | Peak USS (MB) |
+|--------:|---------:|----------:|------:|--------------:|
+| h=0    | 8.66     | 617       | 0.24  | 1453.5        |
+| h=1    | 11.52    | 617       | 0.18  | 1197.2        |
+| h=2    | 15.48    | 617       | 0.13  | 939.5         |
+| h=3    | 20.35    | 617       | 0.10  | 713.2         |
+| h=4    | 25.87    | 617       | 0.08  | 706.8         |
 
 
 **Remarks**
@@ -134,23 +79,3 @@ The benchmarks were executed using the script `./run.sh` with the following para
 * **Compiler**: GCC 15.1.0 with C++20 support
 
 ---
-
-## How to Reproduce
-
-To reproduce these benchmarks on your system. On Debian/Ubuntu you can install common packages with:
-
-```bash
-sudo apt update && sudo apt install -y build-essential cmake
-```
-
-The 4-way BLAKE2b SIMD build (`-x4` / `equix41`) requires a CPU with AVX2 support and a compiler that can emit AVX2 code (use `-mavx2` or `-march=native`).
-
-```bash
-./run.sh (-x4) --iters 2000 --seed 0
-```
-
-Plain compile (if `cmake` not available):
-
-``` bash
-g++ -I./include -I./third_party/kxsort -I./third_party/blake2-avx2 src/eq200_9/apr_main.cpp src/eq200_9/apr_alg.cpp third_party/blake2-avx2/blake2bip.c third_party/blake/blake2b.cpp -o apr -std=c++17 -O3 -march=native -mavx2 -funroll-loops -Wall -Wextra -Wno-unused-variable
-```
