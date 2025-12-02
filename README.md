@@ -29,7 +29,7 @@ All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`
 
 For all optimization techniques, we provide Python-based proof-of-concept implementations to validate their theoretical correctness. In the subdirectory [python-poc](./python-poc/), we include concrete estimators that compute optimal parameter choices for Wagner’s algorithm under various memory constraints and parameter settings.  For example, under the index-trimming technique, the optimal parameter choices are as follows.
 
-| (n,k)   | trimmed_length | peak_mem  | runtime      | switching_height1 | peak_mem1  | runtime1     | peak_layer1 | switching_height2 | peak_mem2  | runtime2     | peak_layer2 | activating_height |
+| (n,k)   | trimmed_length | peak_mem  | total_runtime      | switching_height1 | peak_mem1  | runtime1     | peak_layer1 | switching_height2 | peak_mem2  | runtime2     | peak_layer2 | activating_height |
 |----------|----------------|-----------|--------------|-------------------:|-----------:|--------------:|------------:|-------------------:|-----------:|--------------:|------------:|------------------:|
 | (96, 5)  | 1              | 2^23.09   | 2.30 * T0    | 2                  | 2^23.09    | 1.40 * T0    | 2           | 2                  | 2^23.04    | 0.90 * T0    | 2           | 2                 |
 | (128,7) | 1              | 2^23.58   | 3.15 * T0    | 3                  | 2^23.58    | 1.86 * T0    | 6           | 3                  | 2^23.09    | 1.29 * T0    | 2           | 3                 |
@@ -49,8 +49,29 @@ More resluts are available in [python-poc](./python-poc/).
 
 ## Implementations
 
-Our implementation serves solely as a proof of concept and does not incorporate aggressive low-level optimizations. We also note that these optimizations may significantly impact the ASIC-resistance of existing blockchains that rely on $`\textsf{Equihash}`$. We therefore recommend that such blockchains reassess the memory bottlenecks of ASIC implementations across all $`\textsf{Equihash}`$ parameter settings. For the parameter setting \textsf{Equihash}$(200, 9)$, a subset of our optimization results is shown below (serving only as a proof of concept).
+Our implementation serves solely as a proof of concept and does not incorporate aggressive low-level optimizations. We also note that these optimizations may significantly impact the ASIC-resistance of existing blockchains that rely on $`\textsf{Equihash}`$. We therefore recommend that such blockchains reassess the memory bottlenecks of ASIC implementations across all $`\textsf{Equihash}`$ parameter settings. 
 
+
+
+
+### Equihash(144,5) Quick Benchmark
+
+For the parameter setting $`\textsf{Equihash}(144, 5)`$, a subset of our optimization results is shown below (serving only as a proof of concept). Our implementations outperform Tromp's baseline implementation (CIP) in both time and memory usage.
+
+| Algorithm      | Sol/s | Avg single run (s) | Total solutions | Peak RSS (kB) | Peak USS (kB) |
+| -------------- | -----:| ------------------: | ---------------:| -------------:| -------------:|
+| CIP            | 0.20  | 10.15              | 198             | 1774464       | 1772900       |
+| CIP-PR         | 0.06  | 31.81              | 198             | 724480        | 722892        |
+| CIP-EM         | 0.18  | 10.98              | 198             | 725092        | 723440        |
+| Tromp-Eq14451  | 0.19  | 9.76               | 190             | 2633344       | 2631388       |
+
+> Notes: "Avg single run (s)" is the average per-iteration runtime reported by the benchmark (for Tromp the total time was divided by 100 iterations to obtain the per-run average).
+
+
+
+### Equihash(200,9) Quick Benchmark
+
+For the parameter setting $`\textsf{Equihash}(200, 9)`$, a subset of our optimization results is shown below (serving only as a proof of concept).
 
 | Algorithm      | Sol/s | Peak RSS (kB) | Peak USS (kB) | Peak USS (MB) |
 | -------------- | ----- | ------------- | ------------- | ------------- |
@@ -61,4 +82,7 @@ Our implementation serves solely as a proof of concept and does not incorporate 
 | Tromp-Equix41  | 9.01  | 150,400       | 147,700       | 144.24        |
 
 
-> The current implementations of the sorting algorithm and the linear-scan procedure still have substantial room for optimization, which explains the noticeable performance gap between the standard $\textsf{CIP}$ implementation and Tromp’s implementation. Further details can be found in the directory [advanced-cip](./advanced-cip/).
+**Remark.** As the runner-up in the Zcash miner optimization contest (see https://zcashminers.org/submissions), Tromp’s implementation of $`\textsf{Equihash}(200,9)`$ incorporates numerous carefully engineered optimizations, including the choice of near-optimal bucket sizes, layer-specific tuning of $`\textsf{merge}`$ functions, and compact index-pointer representations. The winning implementation applied even more aggressive low-level optimizations, such as hand-crafted assembly and architecture-specific tuning.
+In contrast, our work does not aim to produce a highly optimized or practically competitive $`\textsf{Equihash}`$ solver. Instead, our goal is to demonstrate the effectiveness of the new algorithmic techniques introduced in this paper. Accordingly, our implementation uses straightforward C++ templates without architecture-specific or assembly-level optimizations, yet it already achieves performance reasonably close to existing optimized implementations.
+
+> The current implementations of the sorting algorithm and the linear-scan procedure still have substantial room for optimization, which explains the noticeable performance gap between the standard $\textsf{CIP}$ implementation and Tromp’s implementation (CIP). Further details can be found in the directory [advanced-cip](./advanced-cip/).
