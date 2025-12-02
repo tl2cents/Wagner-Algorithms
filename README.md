@@ -35,7 +35,11 @@ More estimators and resluts are available in [python-poc](./python-poc/). A lowe
 
 Our implementation serves solely as a proof of concept and does not incorporate aggressive low-level optimizations. We also note that these optimizations may significantly impact the ASIC-resistance of existing blockchains that rely on $`\textsf{Equihash}`$. We therefore recommend that such blockchains reassess the memory bottlenecks of ASIC implementations across all $`\textsf{Equihash}`$ parameter settings. 
 
-![apr-time-mem](./apr-time-mem.svg)
+### Advanced Post-Retrieval with Different Switching Heights
+
+<p align="center">
+	<img src="./apr-time-mem.svg" alt="Advanced Post-Retrieval Trade-off Curves with Different Switching Heights" />
+</p>
 
 > Details are available in the directories [eq1445](./eq1445/).
 

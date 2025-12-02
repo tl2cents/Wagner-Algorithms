@@ -5,5 +5,4 @@ __*/
 _*
 build/
 benchmark/
-tches2026_2-paper43.pdf
-tches2026_2-paper43.txt
+*.bin
