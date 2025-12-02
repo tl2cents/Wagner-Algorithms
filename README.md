@@ -37,7 +37,7 @@ Our implementation serves solely as a proof of concept and does not incorporate 
 
 ![apr-time-mem](./apr-time-mem.svg)
 
-
+> Details are available in the directories [eq1445](./eq1445/).
 
 ### Equihash(144,5) Quick Benchmark
 
