@@ -67,8 +67,11 @@ For the parameter setting $`\textsf{Equihash}(200, 9)`$, a subset of our optimiz
 | CIP            | 2.12  | 155.82        |
 | CIP-PR         | 0.44  | 58.24         |
 | CIP-EM         | 1.93  | 58.67         |
-| CIP-APR        | 0.74  | 63.11         |
+| CIP-APR5       | 0.74  | 63.11         |
 | Tromp-Equi1    | 6.30  | 145.54        |
+
+> CIP-APR5 refers to the advanced post-retrieval technique with switching height set to 5.
+> CIP-EM requires external memory which in practice may be highly advantageous for ASIC implementations.
 
 **Remark.** As the runner-up in the Zcash miner optimization contest (see https://zcashminers.org/submissions), Tromp’s implementation of $`\textsf{Equihash}(200,9)`$ incorporates numerous carefully engineered optimizations, including the choice of near-optimal bucket sizes, layer-specific tuning of $`\textsf{merge}`$ functions, and compact index-pointer representations. The winning implementation applied even more aggressive low-level optimizations, such as hand-crafted assembly and architecture-specific tuning.
 In contrast, our work does not aim to produce a highly optimized or practically competitive $`\textsf{Equihash}`$ solver. This performance gap is therefore **an engineering issue rather than a conceptual one**. Our implementation is sufficient to demonstrate the effectiveness of the new algorithmic techniques proposed in this work, and the results clearly validate the improvements our methods bring.
