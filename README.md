@@ -9,7 +9,15 @@ We propose two new techniques to optimize Wagner's algorithms:
 - **Improved Index-Trimming Technique**: Reduces memory usage by trimming indexes for both the single-chain and $k$-tree algorithms implemented with index vectors.
 - **Post-Retrival Technique**: Reduces memory usage by reconstructing the index pointers for single-chain algorithm implemented with index pointers. It's not memory-efficient for the $k$-tree algorithm.
 
-All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`$ framework. Theoretically, our techniques can reduce the peak memory usage of Wagner's algorithm by half (from $`2nN`$ to $`nN`$ bits) across most parameter settings, while incurring no more than a twofold time penalty. Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits) at the cost of additional computational overhead. 
+All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`$ framework. Theoretically, our techniques can reduce the peak memory usage of Wagner's algorithm by half (from $`2nN`$ to $`nN`$ bits) across most parameter settings, while incurring no more than a twofold time penalty. For example, the figure below shows that our new advanced post-retrieval technique achieves an almost linear time–memory trade-off curve, which is strictly better than the curve obtained by existing List Size Reduction (LSR) techniques.
+
+![trade-off](./trade-off.svg)
+
+> The above LSR curve is not applicable to algorithm-bound Equihash, whereas our algorithm is.
+
+> For the LSR curve above, the reason why the time penalty is slightly above 1 when q=1 is that their baseline algorithm differs from the standard Wagner algorithm.
+
+Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits, i.e., q < 0.5) at the cost of additional computational overhead. 
 
 <!-- 
 For example, under the hybrid technique, the optimal parameter choices are as follows.
@@ -27,7 +35,6 @@ For example, under the hybrid technique, the optimal parameter choices are as fo
 | (288,8) | 2^42.04       | 2^41.00 | 2.9 * T0   | 0                 | 5                 | 1          |
 | (200,9) | 2^29.55       | 2^28.38 | 4.0 * T0   | 1                 | 5                 | 8          | 
 -->
-
 
 More estimators and resluts are available in [python-poc](./python-poc/). A lower–time-penalty implementation can be found in the next section.
 
