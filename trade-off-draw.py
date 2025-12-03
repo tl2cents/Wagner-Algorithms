@@ -12,7 +12,7 @@ plt.rcParams['axes.unicode_minus'] = False
 PARAMS = ["144_5", "200_9"]
 
 
-def get_equihash_params(PARAM):
+def get_GBP_params(PARAM):
     if PARAM == "200_9":
         n = 200
         k = 9
@@ -47,7 +47,7 @@ args = parser.parse_args()
 fig, ax = plt.subplots(1, 2, figsize=(12, 5))
 
 for i, PARAM in enumerate(PARAMS):
-    n, k, ell, N, runtime_exp, memory_exp, tromp = get_equihash_params(PARAM)
+    n, k, ell, N, runtime_exp, memory_exp, tromp = get_GBP_params(PARAM)
     curr_ax = ax[i]
 
     # ---------------- LSR and LSR* Curves ----------------
@@ -130,7 +130,7 @@ for i, PARAM in enumerate(PARAMS):
                  bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#AAAAAA", alpha=0.8))
 
     # ---------------- Formatting ----------------
-    curr_ax.set_title(rf"$\mathrm{{Equihash}}({n},{k})$ Trade-off")
+    curr_ax.set_title(rf"$\mathrm{{GBP}}({n},2^{{{k}}})$ Trade-off")
     curr_ax.set_xlabel(r"Memory Fraction ($q = M_1/M_0$)")
     curr_ax.set_ylabel(r"Time Penalty Factor ($\gamma = T_1/T_0$)")
     
