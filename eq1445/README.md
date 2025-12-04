@@ -6,19 +6,17 @@
 * **OS**: Linux (Ubuntu 20.04 LTS or later recommended), NOT tested on MacOS or Windows natively.
 * **Compiler**: GCC 9.0+ with C++20 support
 
-
-
 > Running Benchmark Comparisons of Equihash(200, 9):
 ``` bash
 $./run.sh --iters 100 --seed 0 --variant 144_5
 ```
 
-| Algorithm      | Sol/s | Avg RunTime (s) | Total solutions | Peak RSS (kB) | Peak USS (MB) |
-| -------------- | ----: | --------------: | --------------: | ------------: | ------------: |
-| CIP            |  0.23 |            8.50 |             198 |       1776052 |       1732.97 |
-| CIP-PR         |  0.08 |           25.24 |             198 |        725236 |        706.78 |
-| CIP-EM         |  0.22 |            9.17 |             198 |        726052 |        707.56 |
-| Tromp-Baseline |  0.20 |            9.20 |             190 |       2633344 |       2569.71 |
+| Algorithm      | Sol/s | Avg RunTime (s) | Total solutions | Peak USS (MB) |
+| -------------- | ----: | --------------: | --------------: | ------------: |
+| CIP            |  0.23 |            8.50 |             198 |       1732.97 |
+| CIP-PR         |  0.08 |           25.24 |             198 |        706.78 |
+| CIP-EM         |  0.22 |            9.17 |             198 |        707.56 |
+| Tromp-Baseline |  0.20 |            9.20 |             190 |       2569.71 |
 
 > Running Advanced Post-Retrieval of Equihash(200, 9):
 ``` bash

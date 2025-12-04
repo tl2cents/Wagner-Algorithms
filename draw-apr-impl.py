@@ -15,15 +15,17 @@ def get_equihash_params(PARAM):
     if PARAM == "200_9":
         n = 200
         k = 9
-        runtime_exp = np.array([1.11, 1.32, 1.64, 2.03, 2.48, 3.07, 3.70, 4.46, 5.24])
-        memory_exp  = np.array([127.9, 115.1, 102.5, 90.1, 77.6, 64.9, 62.9, 62.6, 62.6])
-        tromp = 144.24  # MB
+        # see eq1445/README.md for results
+        runtime_exp = np.array([0.93, 1.15, 1.45, 1.79, 2.22, 2.70, 3.27, 3.89, 4.55])
+        memory_exp  = np.array([123.9, 110.6, 99.8, 86.5, 74.2, 61.8, 60.8, 59.6, 56.9])
+        tromp = 145.54  # MB
     elif PARAM == "144_5":
         n = 144
         k = 5
-        runtime_exp = np.array([9.96, 11.90, 16.09, 21.30, 27.36])
-        memory_exp  = np.array([1464.2, 1204.8, 946.1, 718.9, 718.0])
-        tromp = 2.6 * 1024  # MB
+        # see eq1445/README.md for results
+        runtime_exp = np.array([8.66, 11.52, 15.48, 20.35, 25.87])
+        memory_exp  = np.array([1453.5, 1197.2, 939.5, 713.2, 706.8])
+        tromp = 2569.71  # MB
     else:
         raise ValueError("Unknown PARAM")
 
@@ -190,7 +192,6 @@ fig.legend(
     bbox_to_anchor=(0.5, 0.025)
 )
 
-# ---------------- Save PDF ----------------
-# plt.savefig("apr-time-mem.pdf", format="pdf", bbox_inches="tight")
+# ---------------- Save SVG ----------------
 plt.savefig("apr-time-mem.svg", format="svg", bbox_inches="tight")
 
