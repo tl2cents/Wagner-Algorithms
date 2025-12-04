@@ -21,19 +21,19 @@ Under the hybrid framework, the memory footprint can be further reduced (below $
 
 <!-- 
 For example, under the hybrid technique, the optimal parameter choices are as follows.
-| (n,k)   | plain peak mem | peak mem | runtime     | switching height1 | switching height2 | peak layer |
-|---------|---------------:|---------:|------------:|------------------:|------------------:|-----------:|
-| (96, 5)  | 2^24.39       | 2^23.04 | 3.8 * T0   | 1                 | 3                 | 4          |
-| (128,7) | 2^24.88       | 2^23.64 | 3.9 * T0   | 1                 | 4                 | 6          |
-| (160,9) | 2^25.25       | 2^24.07 | 4.0 * T0   | 1                 | 5                 | 8          |
-| (96, 3)  | 2^32.21       | 2^30.64 | 4.0 * T0   | 1                 | 2                 | 1          |
-| (144,5) | 2^32.95       | 2^31.61 | 3.8 * T0   | 1                 | 3                 | 4          |
-| (150,5) | 2^34.01       | 2^32.67 | 3.8 * T0   | 1                 | 3                 | 4          |
-| (192,7) | 2^33.44       | 2^32.21 | 3.9 * T0   | 1                 | 4                 | 6          |
-| (240,9) | 2^33.81       | 2^32.63 | 4.0 * T0   | 1                 | 5                 | 8          |
-| (96, 2)  | 2^40.02       | 2^39.00 | 1.5 * T0   | 0                 | 1                 | 1          |
-| (288,8) | 2^42.04       | 2^41.00 | 2.9 * T0   | 0                 | 5                 | 1          |
-| (200,9) | 2^29.55       | 2^28.38 | 4.0 * T0   | 1                 | 5                 | 8          | 
+| (n,k)   | plain peak mem | peak mem |  runtime | switching height1 | switching height2 | peak layer |
+| ------- | -------------: | -------: | -------: | ----------------: | ----------------: | ---------: |
+| (96, 5) |        2^24.39 |  2^23.04 | 3.8 * T0 |                 1 |                 3 |          4 |
+| (128,7) |        2^24.88 |  2^23.64 | 3.9 * T0 |                 1 |                 4 |          6 |
+| (160,9) |        2^25.25 |  2^24.07 | 4.0 * T0 |                 1 |                 5 |          8 |
+| (96, 3) |        2^32.21 |  2^30.64 | 4.0 * T0 |                 1 |                 2 |          1 |
+| (144,5) |        2^32.95 |  2^31.61 | 3.8 * T0 |                 1 |                 3 |          4 |
+| (150,5) |        2^34.01 |  2^32.67 | 3.8 * T0 |                 1 |                 3 |          4 |
+| (192,7) |        2^33.44 |  2^32.21 | 3.9 * T0 |                 1 |                 4 |          6 |
+| (240,9) |        2^33.81 |  2^32.63 | 4.0 * T0 |                 1 |                 5 |          8 |
+| (96, 2) |        2^40.02 |  2^39.00 | 1.5 * T0 |                 0 |                 1 |          1 |
+| (288,8) |        2^42.04 |  2^41.00 | 2.9 * T0 |                 0 |                 5 |          1 |
+| (200,9) |        2^29.55 |  2^28.38 | 4.0 * T0 |                 1 |                 5 |          8 |
 -->
 
 More estimators and resluts are available in [python-poc](./python-poc/). A lower–time-penalty implementation can be found in the next section.
@@ -53,27 +53,25 @@ Our implementation serves solely as a proof of concept and does not incorporate 
 For the parameter setting $`\textsf{Equihash}(144, 5)`$, a subset of our optimization results is shown below (serving only as a proof of concept). Our implementations outperform Tromp's baseline implementation (CIP) in both time and memory usage.
 
 | Algorithm      | Sol/s | Avg single run (s) | Total solutions | Peak USS (MB) |
-| -------------- | -----:| ------------------: | ---------------:| --------------:|
-| CIP            | 0.23  | 8.50               | 198             | 1733.00       |
-| CIP-PR         | 0.08  | 25.24              | 198             | 706.69        |
-| CIP-EM         | 0.22  | 9.17               | 198             | 707.45        |
-| Tromp-Baseline | 0.20  | 9.20               | 190             | 2569.71       |
+| -------------- | ----: | -----------------: | --------------: | ------------: |
+| CIP            |  0.23 |               8.50 |             198 |       1733.00 |
+| CIP-PR         |  0.08 |              25.24 |             198 |        706.69 |
+| CIP-EM         |  0.22 |               9.17 |             198 |        707.45 |
+| Tromp-Baseline |  0.20 |               9.20 |             190 |       2569.71 |
 
 > Notes: "Avg single run (s)" is the average per-iteration runtime reported by the benchmark (for Tromp the total time was divided by 100 iterations to obtain the per-run average).
-
-
 
 ### Equihash(200,9) Quick Benchmark
 
 For the parameter setting $`\textsf{Equihash}(200, 9)`$, a subset of our optimization results is shown below (serving only as a proof of concept).
 
-| Algorithm      | Sol/s | Peak USS (MB) |
-| -------------- | ----- | ------------- |
-| CIP            | 2.12  | 155.82        |
-| CIP-PR         | 0.44  | 58.24         |
-| CIP-EM         | 1.93  | 58.67         |
-| CIP-APR5       | 0.74  | 63.11         |
-| Tromp-Equi1    | 6.30  | 145.54        |
+| Algorithm   | Sol/s | Peak USS (MB) |
+| ----------- | ----- | ------------- |
+| CIP         | 2.12  | 155.82        |
+| CIP-PR      | 0.44  | 58.24         |
+| CIP-EM      | 1.93  | 58.67         |
+| CIP-APR5    | 0.74  | 63.11         |
+| Tromp-Equi1 | 6.30  | 145.54        |
 
 > CIP-APR5 refers to the advanced post-retrieval technique with switching height set to 5.
 > CIP-EM requires external memory which in practice may be highly advantageous for ASIC implementations.
@@ -81,4 +79,4 @@ For the parameter setting $`\textsf{Equihash}(200, 9)`$, a subset of our optimiz
 **Remark.** As the runner-up in the Zcash miner optimization contest (see https://zcashminers.org/submissions), Tromp’s implementation of $`\textsf{Equihash}(200,9)`$ incorporates numerous carefully engineered optimizations, including the choice of near-optimal bucket sizes, layer-specific tuning of $`\textsf{merge}`$ functions, and compact index-pointer representations. The winning implementation applied even more aggressive low-level optimizations, such as hand-crafted assembly and architecture-specific tuning.
 In contrast, our work does not aim to produce a highly optimized or practically competitive $`\textsf{Equihash}`$ solver. This performance gap is therefore **an engineering issue rather than a conceptual one**. Our implementation is sufficient to demonstrate the effectiveness of the new algorithmic techniques proposed in this work, and the results clearly validate the improvements our methods bring.
 
-> The current implementations of the sorting algorithm and the linear-scan procedure still have substantial room for optimization, which explains the noticeable performance gap between the standard $\textsf{CIP}$ implementation and Tromp’s implementation (CIP). Further details can be found in the directory [eq2009](./eq2009/).
+> Further details can be found in the directory [eq2009](./eq2009/).
