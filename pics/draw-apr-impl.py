@@ -1,11 +1,21 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
 # ---------------- Matplotlib Config ----------------
 plt.rcParams['font.family'] = 'Times New Roman'
 plt.rcParams['font.size'] = 14
 plt.rcParams['mathtext.fontset'] = 'cm'
 plt.rcParams['axes.unicode_minus'] = False
+
+# Ensure PGF output preserves LaTeX commands (so \cite remains in the PGF file)
+plt.rcParams['pgf.texsystem'] = 'pdflatex'
+plt.rcParams['pgf.rcfonts'] = False
+
+# ---------------- Parse Arguments ----------------
+parser = argparse.ArgumentParser(description='Plot Equihash time/memory figures.')
+parser.add_argument('--output-format', choices=['latex', 'svg'], default='svg', help='Output format: latex (pgf) or svg')
+args = parser.parse_args()
 
 
 PARAMS = ["200_9", "144_5"]
@@ -173,7 +183,9 @@ lines = [
     sota_theory_line,      # SoTA (theory)
 ]
 
+# labels = ["Our Impl.", "Our Theory", r"State-of-the-Art (Impl.) \cite{equihastromp}", "State-of-the-Art (Theory)"]
 labels = ["Our Impl.", "Our Theory", "State-of-the-Art (Impl.)", "State-of-the-Art (Theory)"]
+
 
 fig.legend(
     handles=lines,
@@ -192,6 +204,20 @@ fig.legend(
     bbox_to_anchor=(0.5, 0.025)
 )
 
-# ---------------- Save SVG ----------------
-plt.savefig("apr-time-mem.svg", format="svg", bbox_inches="tight")
+# ---------------- Save Figure ----------------
+output_format = args.output_format
+if output_format == 'latex':
+    # save as PGF for inclusion in LaTeX
+    plt.savefig("apr-time-mem.pgf", format="pgf", bbox_inches="tight")
+    print("\nExample LaTeX code to include the generated PGF file:")
+    print('''
+\\begin{figure}[ht]
+    \\centering
+    \\resizebox{0.9\\textwidth}{!}{\\input{apr-time-mem.pgf}}
+    \\caption{Equihash Time and Peak Memory Trade-offs}
+    \\label{fig:apr_time_mem}
+\\end{figure}
+''')
+else:
+    plt.savefig("apr-time-mem.svg", format="svg", bbox_inches="tight")
 

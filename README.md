@@ -11,7 +11,7 @@ We propose two new techniques to optimize Wagner's algorithms:
 
 All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`$ framework. Theoretically, our techniques can reduce the peak memory usage of Wagner's algorithm by half (from $`2nN`$ to $`nN`$ bits) across most parameter settings, while incurring no more than a twofold time penalty. For example, the figure below shows that our new advanced post-retrieval technique achieves an almost linear time–memory trade-off curve, which is strictly better than the curve obtained by existing List Size Reduction (LSR) techniques.
 
-![trade-off](./trade-off.svg)
+![trade-off](./pics/trade-off.svg)
 
 > The above LSR curve is not applicable to algorithm-bound Equihash, whereas our algorithm is.
 
@@ -44,7 +44,7 @@ Our implementation serves solely as a proof of concept and does not incorporate 
 
 ### Advanced Post-Retrieval with Different Switching Heights
 
-![apr-time-mem](./apr-time-mem.svg)
+![apr-time-mem](./pics/apr-time-mem.svg)
 
 > Details are available in the directories [eq1445](./eq1445/).
 
@@ -80,3 +80,9 @@ For the parameter setting $`\textsf{Equihash}(200, 9)`$, a subset of our optimiz
 In contrast, our work does not aim to produce a highly optimized or practically competitive $`\textsf{Equihash}`$ solver. This performance gap is therefore **an engineering issue rather than a conceptual one**. Our implementation is sufficient to demonstrate the effectiveness of the new algorithmic techniques proposed in this work, and the results clearly validate the improvements our methods bring.
 
 > Further details can be found in the directory [eq2009](./eq2009/).
+
+
+## TODO
+
+- [ ] Refactor the codebase for better readability and modularity.
+- [ ] Implement hybrid single-chain algorithms. See our on-going development branch [dev-hybrid](https://github.com/tl2cents/Wagner-Algorithms/tree/dev-hybrid).
