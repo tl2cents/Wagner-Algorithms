@@ -1,6 +1,6 @@
 # Wagner-Algorithms
 
-New memory optimizations for Wagner's algorithms and Equihash accompanying the paper: "New Memory Optimizations of Wagner’s Algorithms via List Item Reduction". 
+New memory optimizations for Wagner's algorithms accompanying the paper: "Memory Optimizations of Wagner’s Algorithm with Applications to Equihash". The paper is available at https://eprint.iacr.org/2025/2141.
 
 ## New Memory Optimizations of Wagner's Algorithms
 
