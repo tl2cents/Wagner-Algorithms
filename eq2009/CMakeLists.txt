@@ -73,19 +73,19 @@ endif()
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
   ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/third_party/blake
-  ${CMAKE_SOURCE_DIR}/third_party/blake2-avx2
-  ${CMAKE_SOURCE_DIR}/third_party/kxsort
+  ${CMAKE_SOURCE_DIR}/../third_party/blake
+  ${CMAKE_SOURCE_DIR}/../third_party/blake2-avx2
+  ${CMAKE_SOURCE_DIR}/../third_party/kxsort
 )
 
 # Sources
 set(SRC_BASE
   src/apr_main.cpp
   src/apr_alg.cpp
-  third_party/blake/blake2b.cpp
+  ${CMAKE_SOURCE_DIR}/../third_party/blake/blake2b.cpp
 )
 set(SRC_AVX
-  third_party/blake2-avx2/blake2bip.c
+  ${CMAKE_SOURCE_DIR}/../third_party/blake2-avx2/blake2bip.c
 )
 
 # Common post-create target tweaks
@@ -117,7 +117,7 @@ endfunction()
 
 
 # In-place merge benchmark executable
-add_executable(inplace_bench src/inplace_merge_benchmark.cpp third_party/blake/blake2b.cpp)
+add_executable(inplace_bench src/inplace_merge_benchmark.cpp ${CMAKE_SOURCE_DIR}/../third_party/blake/blake2b.cpp)
 apply_common_opts(inplace_bench)
 
 # convenience target to build inplace_bench

@@ -167,12 +167,12 @@ if [ -n "$TROMP_TARGET" ]; then
   else
     TROMP_STEP_ID=4
   fi
-  if [ -d equihash ]; then
+  if [ -d ../third_party/tromp-equihash ]; then
     step "$TROMP_STEP_ID" "Tromp Baseline"
   if [ ! -f "build/${TROMP_BIN}" ]; then
     echo -e "Building Tromp baseline target ${TROMP_TARGET}..."
-    (cd equihash && make ${TROMP_TARGET} > /dev/null 2>&1) || echo -e "${RED}Tromp build failed${NC}"
-    [ -f "equihash/${TROMP_BIN}" ] && mv "equihash/${TROMP_BIN}" "build/${TROMP_BIN}" || true
+    (cd ../third_party/tromp-equihash && make ${TROMP_TARGET} > /dev/null 2>&1) || echo -e "${RED}Tromp build failed${NC}"
+    [ -f "../third_party/tromp-equihash/${TROMP_BIN}" ] && mv "../third_party/tromp-equihash/${TROMP_BIN}" "build/${TROMP_BIN}" || true
   fi
   if [ -f "build/${TROMP_BIN}" ]; then
     TROMP_AVAILABLE=true
@@ -205,7 +205,7 @@ if [ -n "$TROMP_TARGET" ]; then
       echo -e "${YELLOW}Tromp baseline binary not found in build/. Skipping.${NC}"; echo "To enable: place or build into build/${TROMP_BIN}"
     fi
   else
-    echo -e "${YELLOW}equihash/ source directory not present; Tromp baseline skipped for variant ${VARIANT}.${NC}"
+    echo -e "${YELLOW}../third_party/tromp-equihash/ source directory not present; Tromp baseline skipped for variant ${VARIANT}.${NC}"
   fi
 fi
 
