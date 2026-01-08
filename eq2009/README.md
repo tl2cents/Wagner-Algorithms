@@ -95,33 +95,13 @@ The benchmarks were executed using the script `./run.sh` with the following para
 
 ## Detailed System Configuration
 
-### CPU Information
-
 * **Model**: 13th Gen Intel(R) Core(TM) i7-13700K
-* **Architecture**: x86-64
 * **Base Frequency**: ~3.4 GHz (average measured: 3417.6 MHz)
-* **Cache**: 30 MB (L3)
-* **Virtualization**: VT-x enabled
-* **Features**: AVX2 support (required for BLAKE2b hashing)
-
-### Memory Configuration
-
-* **Total RAM**: 64 GB (62 GiB)
-* **Swap Space**: 16 GB
-* **Type**: DDR5，Samsung, Read/Write Speed 5600 MT/s
-
-### External Storage Configuration
-
-* **External Storage**: Windows filesystem mounted via WSL2
-* **Filesystem**: NTFS (mounted via WSL2)
+* **Memory**: DDR5, Samsung, Read/Write Speed 5600 MT/s
+* **Filesystem**: NTFS (mounted via Ubuntu 22.04.5 LTS, WSL2)
 * **SSD**: Fanxiang 690Q with **read speeds up to** **5200 MB/s** **and write speeds up to** **4700 MB/s**
 
 **Note:** Due to WSL2 virtual disk limitation, the actual read and write speeds may be slightly lower.
-
-### Operating System
-
-* **OS**: Ubuntu 22.04.5 LTS (running on WSL2)
-* **Compiler**: GCC 15.1.0 with C++20 support
 
 ---
 

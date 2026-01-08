@@ -6,3 +6,4 @@ _*
 build/
 benchmark/
 *.bin
+.vscode/
