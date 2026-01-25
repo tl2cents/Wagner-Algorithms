@@ -81,7 +81,7 @@ for i, PARAM in enumerate(PARAMS):
     q_theory = 1.0 / mem_theory_frac
     time_theory_penalty = runtime_theory / runtime_theory[0]
 
-    curr_ax.plot(q_theory, time_theory_penalty, "s--", label="Our Theory", color="#0076AA", linewidth=2.0)
+    curr_ax.plot(q_theory, time_theory_penalty, "s--", label="Our Theory~(Sec.~\\ref{para:cip-apr})~", color="#0076AA", linewidth=2.0)
 
     # ---------------- Our Impl Points ----------------
     # Normalize Impl (Baseline h=0)
@@ -120,9 +120,9 @@ for i, PARAM in enumerate(PARAMS):
                              color="#EE2A25", ha='center', va='bottom', **anno_opts)
 
     # Explanation for h
-    curr_ax.text(0.05, 0.95, "Numbers indicate\nswitching height $h$ \n of our algorithm", 
+    curr_ax.text(0.05, 0.95, "Numbers indicate\nswitching height $h$ \n of our Algorithm~\\ref{alg:CIP-PR}", 
                  transform=curr_ax.transAxes, 
-                 fontsize=12, ha='left', va='top',
+                 fontsize=14, ha='left', va='top',
                  bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#AAAAAA", alpha=0.8))
 
     # ---------------- Formatting ----------------
@@ -144,7 +144,7 @@ for i, PARAM in enumerate(PARAMS):
     # Plot LSR and LSR* curves across extended range so they reach x_points_max
     q_plot = np.linspace(q_min, x_points_max, 300)
     lsr_penalty = (3 * (q_plot**((k - 1)/2.0)) + k) / (k + 1)
-    curr_ax.plot(q_plot, lsr_penalty, label=r"LSR \cite{NDSS:BirKho16} ", linestyle='-', color='#AE8064', linewidth=2.0)
+    curr_ax.plot(q_plot, lsr_penalty, label=r"LSR \cite{NDSS:BirKho16}~~", linestyle='-', color='#AE8064', linewidth=2.0)
     if args.show_lsr_star:
         lsr_star_penalty = (2**k) * (q_plot**(k/2.0)) * (k**(k/2.0 - 1))
         curr_ax.plot(q_plot, lsr_star_penalty, label=r"LSR$^\star$", linestyle='--', color='#2E8B57', linewidth=2.0)

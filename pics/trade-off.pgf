@@ -1731,16 +1731,16 @@
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetstrokeopacity{0.800000}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{0.958586in}{3.637113in}}%
-\pgfpathlineto{\pgfqpoint{2.322711in}{3.637113in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{2.389378in}{3.637113in}}{\pgfqpoint{2.389378in}{3.703780in}}%
-\pgfpathlineto{\pgfqpoint{2.389378in}{4.194518in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{2.389378in}{4.261185in}}{\pgfqpoint{2.322711in}{4.261185in}}%
-\pgfpathlineto{\pgfqpoint{0.958586in}{4.261185in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{0.891919in}{4.261185in}}{\pgfqpoint{0.891919in}{4.194518in}}%
-\pgfpathlineto{\pgfqpoint{0.891919in}{3.703780in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{0.891919in}{3.637113in}}{\pgfqpoint{0.958586in}{3.637113in}}%
-\pgfpathlineto{\pgfqpoint{0.958586in}{3.637113in}}%
+\pgfpathmoveto{\pgfqpoint{0.958586in}{3.527853in}}%
+\pgfpathlineto{\pgfqpoint{2.748542in}{3.527853in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{2.826320in}{3.527853in}}{\pgfqpoint{2.826320in}{3.605631in}}%
+\pgfpathlineto{\pgfqpoint{2.826320in}{4.194518in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{2.826320in}{4.272296in}}{\pgfqpoint{2.748542in}{4.272296in}}%
+\pgfpathlineto{\pgfqpoint{0.958586in}{4.272296in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{0.880808in}{4.272296in}}{\pgfqpoint{0.880808in}{4.194518in}}%
+\pgfpathlineto{\pgfqpoint{0.880808in}{3.605631in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{0.880808in}{3.527853in}}{\pgfqpoint{0.958586in}{3.527853in}}%
+\pgfpathlineto{\pgfqpoint{0.958586in}{3.527853in}}%
 \pgfpathclose%
 \pgfusepath{stroke,fill}%
 \end{pgfscope}%
@@ -1748,19 +1748,19 @@
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=0.958586in, y=4.078778in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{12.000000}{14.400000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}Numbers indicate}}%
+\pgftext[x=0.958586in, y=4.055630in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}Numbers indicate}}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=0.958586in, y=3.907482in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{12.000000}{14.400000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}switching height $h$ }}%
+\pgftext[x=0.958586in, y=3.850075in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}switching height $h$ }}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=0.958586in, y=3.736187in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{12.000000}{14.400000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%} of our algorithm}}%
+\pgftext[x=0.958586in, y=3.644520in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%} of our Algorithm~\ref{alg:CIP-PR}}}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
@@ -4428,16 +4428,16 @@
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetstrokeopacity{0.800000}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{6.780461in}{3.637113in}}%
-\pgfpathlineto{\pgfqpoint{8.144586in}{3.637113in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{8.211253in}{3.637113in}}{\pgfqpoint{8.211253in}{3.703780in}}%
-\pgfpathlineto{\pgfqpoint{8.211253in}{4.194518in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{8.211253in}{4.261185in}}{\pgfqpoint{8.144586in}{4.261185in}}%
-\pgfpathlineto{\pgfqpoint{6.780461in}{4.261185in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{6.713794in}{4.261185in}}{\pgfqpoint{6.713794in}{4.194518in}}%
-\pgfpathlineto{\pgfqpoint{6.713794in}{3.703780in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{6.713794in}{3.637113in}}{\pgfqpoint{6.780461in}{3.637113in}}%
-\pgfpathlineto{\pgfqpoint{6.780461in}{3.637113in}}%
+\pgfpathmoveto{\pgfqpoint{6.780461in}{3.527853in}}%
+\pgfpathlineto{\pgfqpoint{8.570417in}{3.527853in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{8.648195in}{3.527853in}}{\pgfqpoint{8.648195in}{3.605631in}}%
+\pgfpathlineto{\pgfqpoint{8.648195in}{4.194518in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{8.648195in}{4.272296in}}{\pgfqpoint{8.570417in}{4.272296in}}%
+\pgfpathlineto{\pgfqpoint{6.780461in}{4.272296in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{6.702683in}{4.272296in}}{\pgfqpoint{6.702683in}{4.194518in}}%
+\pgfpathlineto{\pgfqpoint{6.702683in}{3.605631in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{6.702683in}{3.527853in}}{\pgfqpoint{6.780461in}{3.527853in}}%
+\pgfpathlineto{\pgfqpoint{6.780461in}{3.527853in}}%
 \pgfpathclose%
 \pgfusepath{stroke,fill}%
 \end{pgfscope}%
@@ -4445,19 +4445,19 @@
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=6.780461in, y=4.078778in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{12.000000}{14.400000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}Numbers indicate}}%
+\pgftext[x=6.780461in, y=4.055630in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}Numbers indicate}}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=6.780461in, y=3.907482in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{12.000000}{14.400000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}switching height $h$ }}%
+\pgftext[x=6.780461in, y=3.850075in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}switching height $h$ }}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=6.780461in, y=3.736187in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{12.000000}{14.400000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%} of our algorithm}}%
+\pgftext[x=6.780461in, y=3.644520in, left, base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%} of our Algorithm~\ref{alg:CIP-PR}}}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
@@ -4476,16 +4476,16 @@
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetstrokeopacity{0.900000}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{3.082384in}{0.100000in}}%
-\pgfpathlineto{\pgfqpoint{8.610571in}{0.100000in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{8.649460in}{0.100000in}}{\pgfqpoint{8.649460in}{0.138889in}}%
-\pgfpathlineto{\pgfqpoint{8.649460in}{0.455555in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{8.649460in}{0.494444in}}{\pgfqpoint{8.610571in}{0.494444in}}%
-\pgfpathlineto{\pgfqpoint{3.082384in}{0.494444in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{3.043496in}{0.494444in}}{\pgfqpoint{3.043496in}{0.455555in}}%
-\pgfpathlineto{\pgfqpoint{3.043496in}{0.138889in}}%
-\pgfpathquadraticcurveto{\pgfqpoint{3.043496in}{0.100000in}}{\pgfqpoint{3.082384in}{0.100000in}}%
-\pgfpathlineto{\pgfqpoint{3.082384in}{0.100000in}}%
+\pgfpathmoveto{\pgfqpoint{2.600792in}{0.100000in}}%
+\pgfpathlineto{\pgfqpoint{9.092164in}{0.100000in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{9.131052in}{0.100000in}}{\pgfqpoint{9.131052in}{0.138889in}}%
+\pgfpathlineto{\pgfqpoint{9.131052in}{0.455555in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{9.131052in}{0.494444in}}{\pgfqpoint{9.092164in}{0.494444in}}%
+\pgfpathlineto{\pgfqpoint{2.600792in}{0.494444in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{2.561903in}{0.494444in}}{\pgfqpoint{2.561903in}{0.455555in}}%
+\pgfpathlineto{\pgfqpoint{2.561903in}{0.138889in}}%
+\pgfpathquadraticcurveto{\pgfqpoint{2.561903in}{0.100000in}}{\pgfqpoint{2.600792in}{0.100000in}}%
+\pgfpathlineto{\pgfqpoint{2.600792in}{0.100000in}}%
 \pgfpathclose%
 \pgfusepath{stroke,fill}%
 \end{pgfscope}%
@@ -4496,16 +4496,16 @@
 \definecolor{currentstroke}{rgb}{0.682353,0.501961,0.392157}%
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{3.140718in}{0.315278in}}%
-\pgfpathlineto{\pgfqpoint{3.412940in}{0.315278in}}%
-\pgfpathlineto{\pgfqpoint{3.685162in}{0.315278in}}%
+\pgfpathmoveto{\pgfqpoint{2.659126in}{0.315278in}}%
+\pgfpathlineto{\pgfqpoint{2.931348in}{0.315278in}}%
+\pgfpathlineto{\pgfqpoint{3.203570in}{0.315278in}}%
 \pgfusepath{stroke}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=3.821273in,y=0.247222in,left,base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}LSR \cite{NDSS:BirKho16} }}%
+\pgftext[x=3.339681in,y=0.247222in,left,base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}LSR \cite{NDSS:BirKho16}~~}}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \pgfsetbuttcap%
@@ -4514,9 +4514,9 @@
 \definecolor{currentstroke}{rgb}{0.000000,0.462745,0.666667}%
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetdash{{7.400000pt}{3.200000pt}}{0.000000pt}%
-\pgfpathmoveto{\pgfqpoint{4.931034in}{0.315278in}}%
-\pgfpathlineto{\pgfqpoint{5.203257in}{0.315278in}}%
-\pgfpathlineto{\pgfqpoint{5.475479in}{0.315278in}}%
+\pgfpathmoveto{\pgfqpoint{4.514719in}{0.315278in}}%
+\pgfpathlineto{\pgfqpoint{4.786941in}{0.315278in}}%
+\pgfpathlineto{\pgfqpoint{5.059163in}{0.315278in}}%
 \pgfusepath{stroke}%
 \end{pgfscope}%
 \begin{pgfscope}%
@@ -4538,7 +4538,7 @@
 \pgfusepath{stroke,fill}%
 }%
 \begin{pgfscope}%
-\pgfsys@transformshift{5.203257in}{0.315278in}%
+\pgfsys@transformshift{4.786941in}{0.315278in}%
 \pgfsys@useobject{currentmarker}{}%
 \end{pgfscope}%
 \end{pgfscope}%
@@ -4546,7 +4546,7 @@
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=5.611590in,y=0.247222in,left,base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}Our Theory}}%
+\pgftext[x=5.195275in,y=0.247222in,left,base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}Our Theory~(Sec.~\ref{para:cip-apr})~}}%
 \end{pgfscope}%
 \begin{pgfscope}%
 \pgfsetrectcap%
@@ -4555,9 +4555,9 @@
 \definecolor{currentstroke}{rgb}{0.933333,0.164706,0.145098}%
 \pgfsetstrokecolor{currentstroke}%
 \pgfsetdash{}{0pt}%
-\pgfpathmoveto{\pgfqpoint{7.017711in}{0.315278in}}%
-\pgfpathlineto{\pgfqpoint{7.289934in}{0.315278in}}%
-\pgfpathlineto{\pgfqpoint{7.562156in}{0.315278in}}%
+\pgfpathmoveto{\pgfqpoint{7.499304in}{0.315278in}}%
+\pgfpathlineto{\pgfqpoint{7.771526in}{0.315278in}}%
+\pgfpathlineto{\pgfqpoint{8.043748in}{0.315278in}}%
 \pgfusepath{stroke}%
 \end{pgfscope}%
 \begin{pgfscope}%
@@ -4584,7 +4584,7 @@
 \pgfusepath{stroke,fill}%
 }%
 \begin{pgfscope}%
-\pgfsys@transformshift{7.289934in}{0.315278in}%
+\pgfsys@transformshift{7.771526in}{0.315278in}%
 \pgfsys@useobject{currentmarker}{}%
 \end{pgfscope}%
 \end{pgfscope}%
@@ -4592,7 +4592,7 @@
 \definecolor{textcolor}{rgb}{0.000000,0.000000,0.000000}%
 \pgfsetstrokecolor{textcolor}%
 \pgfsetfillcolor{textcolor}%
-\pgftext[x=7.698267in,y=0.247222in,left,base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}Our Impl.}}%
+\pgftext[x=8.179859in,y=0.247222in,left,base]{\color{textcolor}{\ifdefined\pdftexversion\else\setmainfont{Times New Roman}\rmfamily\fi\fontsize{14.000000}{16.800000}\selectfont\catcode`\^=\active\def^{\ifmmode\sp\else\^{}\fi}\catcode`\%=\active\def%{\%}Our Impl.}}%
 \end{pgfscope}%
 \end{pgfpicture}%
 \makeatother%
