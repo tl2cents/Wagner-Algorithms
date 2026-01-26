@@ -1,10 +1,10 @@
 #!/bin/bash
 # Unified benchmark script for Equihash CIP variants + Tromp baseline
-# Usage: ./run.sh [-x4] [--iters N] [--seed S] [--variant=200_9|144_5]
+# Usage: ./run.sh [-x4] [--iters N] [--seed S] [--nk 200_9|144_5]
 #        -x4       Enable 4-way BLAKE2b SIMD optimized build (requires AVX2, 200_9 only)
 #        --iters N Number of iterations (default 5)
 #        --seed S  Starting seed (default 0)
-#        --variant Select parameter set (default 200_9)
+#        --nk      Select parameter set (default 200_9)
 # Environment: USSMON_INTERVAL can override default 0.01
 set -e
 
@@ -14,7 +14,7 @@ BOLD='\033[1m'
 ITERS=2
 SEED=42
 X4_MODE=false
-VARIANT="200_9"
+NK="200_9"
 USSMON_INTERVAL=${USSMON_INTERVAL:-0.01}
 
 # Parse args
@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
     -x4) X4_MODE=true; shift ;;
     --iters) ITERS="$2"; shift 2 ;;
     --seed) SEED="$2"; shift 2 ;;
-    --variant) VARIANT="$2"; shift 2 ;;
+    --nk) NK="$2"; shift 2 ;;
     -h|--help) grep '^# Usage:' "$0" | sed 's/^# //' ; exit 0 ;;
     *) echo -e "${RED}Unknown argument: $1${NC}"; exit 1 ;;
   esac
@@ -39,7 +39,7 @@ VARIANT_LABEL="Equihash(200,9)"
 TROMP_TARGET=""
 TROMP_BIN=""
 
-case "$VARIANT" in
+case "$NK" in
   200_9)
     VARIANT_LABEL="Equihash(200,9)"
     if $X4_MODE; then
@@ -67,7 +67,7 @@ case "$VARIANT" in
     TROMP_BIN="eq14451"
     ;;
   *)
-    echo -e "${RED}Unsupported variant: ${VARIANT}${NC}"
+    echo -e "${RED}Unsupported nk: ${NK}${NC}"
     exit 1
     ;;
 esac
@@ -205,7 +205,7 @@ if [ -n "$TROMP_TARGET" ]; then
       echo -e "${YELLOW}Tromp baseline binary not found in build/. Skipping.${NC}"; echo "To enable: place or build into build/${TROMP_BIN}"
     fi
   else
-    echo -e "${YELLOW}../third_party/tromp-equihash/ source directory not present; Tromp baseline skipped for variant ${VARIANT}.${NC}"
+    echo -e "${YELLOW}../third_party/tromp-equihash/ source directory not present; Tromp baseline skipped for nk ${NK}.${NC}"
   fi
 fi
 

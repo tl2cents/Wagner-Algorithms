@@ -1,0 +1,21 @@
+nohup: ignoring input
+Found existing build/inplace_bench, skipping build.
+Running: ./build/inplace_bench 0 1000 kx --verbose
+[0;34m======================================[0m
+[0;34m  Inplace Merge Benchmark Summary[0m
+[0;34m======================================[0m
+
+Target                  : inplace_bench
+Seed range              : 0 - 999
+Sort                    : kx
+Runs                    : 1000
+
+Metric                        Average          Max
+------------------------ ------------ ------------
+Sort time (s)                  0.0591       0.0646
+Linear scan (s)                0.0283       0.0338
+Temporary buffer (items)      65.8630          120
+Peak USS (MB)                     N/A      51.5859
+Peak RSS (MB)                     N/A      53.1250
+
+[0;32mBenchmark complete.[0m
