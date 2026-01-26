@@ -127,7 +127,7 @@ endfunction()
 
 
 # In-place merge benchmark executable
-add_executable(inplace_bench src/benchmarks/inplace_merge_benchmark.cpp ${CMAKE_SOURCE_DIR}/../third_party/blake/blake2b.cpp)
+add_executable(inplace_bench src/inplace_merge/inplace_merge_benchmark.cpp ${CMAKE_SOURCE_DIR}/../third_party/blake/blake2b.cpp)
 apply_common_opts(inplace_bench)
 
 # convenience target to build inplace_bench
@@ -138,7 +138,7 @@ add_custom_target(build_inplace_bench
   COMMENT "Build inplace_bench target"
 )
 
-# 1) Baseline (no AVX2 4-way blake)
+# Equihash (200,9) variant
 add_executable(apr_200_9 ${SRC_200_9})
 apply_common_opts(apr_200_9)
 add_executable(apr ALIAS apr_200_9)
@@ -147,9 +147,9 @@ add_executable(apr ALIAS apr_200_9)
 add_executable(apr_144_5 ${SRC_144_5})
 apply_common_opts(apr_144_5)
 
-# 2) 4-way AVX2 single-thread (equix41)
-# only support NBLAKES=4, using blake2bx4 implementation
+# 4-way AVX2, using blake2bx4 implementation
 if(ENABLE_AVX2)
+  # Equihash (200,9)
   add_executable(apr_x41 ${SRC_200_9} ${SRC_AVX})
   target_compile_definitions(apr_x41 PRIVATE NBLAKES=4)
   target_compile_options(apr_x41 PRIVATE -mavx2 -mfma)

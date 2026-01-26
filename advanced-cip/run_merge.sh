@@ -17,7 +17,7 @@ seed_start=${1:-0}
 seed_end=${2:-1}
 sort_algo=${3:-kx}
 
-BENCH_DIR=benchmark
+BENCH_DIR=build
 TARGET=inplace_bench
 
 # USS monitor interval (seconds)

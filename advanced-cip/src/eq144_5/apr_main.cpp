@@ -1,7 +1,7 @@
-#include "eq200_9/equihash_200_9.h"
-#include "eq200_9/merge_200_9.h"
-#include "eq200_9/sort_200_9.h"
-#include "eq200_9/util_200_9.h"
+#include "eq144_5/equihash_144_5.h"
+#include "eq144_5/merge_144_5.h"
+#include "eq144_5/sort_144_5.h"
+#include "eq144_5/util_144_5.h"
 #include "core/zcash_blake.h"
 
 #include <limits.h>
@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-// Forward declarations from apr_alg_200_9.cpp
+// Forward declarations from apr_alg_144_5.cpp
 std::vector<Solution> plain_cip(int seed, uint8_t *base = nullptr);
 std::vector<Solution> plain_cip_pr(int seed, uint8_t *base = nullptr);
 std::vector<Solution> cip_em(int seed, const std::string &em_path, uint8_t *base = nullptr);
@@ -28,7 +28,7 @@ extern bool g_verbose;
 extern uint64_t MAX_ITEM_MEM_BYTES;
 extern uint64_t MAX_IP_MEM_BYTES;
 
-const inline uint64_t MAX_CIP_BYTES = MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES * 8;
+const inline uint64_t MAX_CIP_BYTES = MAX_ITEM_MEM_BYTES + MAX_IP_MEM_BYTES * 4;
 const inline uint64_t MAX_CIP_PR_BYTES = MAX_ITEM_MEM_BYTES;
 const inline uint64_t MAX_CIP_EM_BYTES = MAX_ITEM_MEM_BYTES;
 
@@ -51,7 +51,7 @@ static std::string self_exe_path()
     char buf[PATH_MAX];
     ssize_t n = ::readlink("/proc/self/exe", buf, sizeof(buf) - 1);
     if (n <= 0)
-        return std::string("apr_200_9");
+        return std::string("apr_144_5");
     buf[n] = 0;
     return std::string(buf);
 }
@@ -139,7 +139,7 @@ static int run_mode_cip(int seed, int iters, bool do_check, bool verbose,
                             ? (static_cast<double>(total_sols) / t_fwd_exp_sum)
                             : 0.0;
 
-    std::cout << std::fixed << std::setprecision(2) << "mode=cip variant=200_9 sort="
+    std::cout << std::fixed << std::setprecision(2) << "mode=cip variant=144_5 sort="
               << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
               << " iters=" << iters << " seed_range=" << seed << "-" << (seed + iters - 1)
               << " single_run_time=" << avg_fwd
@@ -194,7 +194,7 @@ static int run_mode_pr(int seed, int iters, bool do_check, bool verbose,
                             ? (static_cast<double>(total_sols) / t_fwd_exp_sum)
                             : 0.0;
 
-    std::cout << std::fixed << std::setprecision(2) << "mode=cip-pr variant=200_9 sort="
+    std::cout << std::fixed << std::setprecision(2) << "mode=cip-pr variant=144_5 sort="
               << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
               << " iters=" << iters << " seed_range=" << seed << "-" << (seed + iters - 1)
               << " single_run_time=" << avg_fwd
@@ -249,7 +249,7 @@ static int run_mode_em(int seed, int iters, bool do_check, bool verbose,
                             ? (static_cast<double>(total_sols) / t_fwd_exp_sum)
                             : 0.0;
 
-    std::cout << std::fixed << std::setprecision(2) << "mode=cip-em variant=200_9 sort="
+    std::cout << std::fixed << std::setprecision(2) << "mode=cip-em variant=144_5 sort="
               << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
               << " iters=" << iters << " seed_range=" << seed << "-" << (seed + iters - 1)
               << " single_run_time=" << avg_fwd
@@ -305,7 +305,7 @@ static int run_mode_cip_apr(int seed, int iters, bool do_check, bool verbose,
                             ? (static_cast<double>(total_sols) / t_fwd_exp_sum)
                             : 0.0;
 
-    std::cout << std::fixed << std::setprecision(2) << "mode=cip-apr variant=200_9 h=" << h << " sort="
+    std::cout << std::fixed << std::setprecision(2) << "mode=cip-apr variant=144_5 h=" << h << " sort="
               << (g_sort_algo == SortAlgo::STD ? "std" : "kx")
               << " iters=" << iters << " seed_range=" << seed << "-" << (seed + iters - 1)
               << " single_run_time=" << avg_fwd
@@ -369,8 +369,11 @@ int main(int argc, char **argv)
     bool run_test = false;
     std::string mode = "cip";
     std::string sortopt = "kx";
-    std::string em_path = "ip_cache_200_9.bin";
-    int h = 3; // Default switching height
+    std::string em_path = "ip_cache_144_5.bin";
+    int apr_h = 3; // Optimal switching height
+    int h = apr_h; // Default switching height
+
+
 
     for (int i = 1; i < argc; ++i)
     {
@@ -396,7 +399,7 @@ int main(int argc, char **argv)
             std::cout << "Usage: " << argv[0]
                       << " [--mode=cip|cip-pr|cip-em|cip-apr] [--seed=N] [--iters=M]"
                          " [--sort=std|kx] [--em=path] [--h=0-3] [--verbose] [--test]\n"
-                         "  --em=path: External memory file path (default: ip_cache_200_9.bin)\n"
+                         "  --em=path: External memory file path (default: ip_cache_144_5.bin)\n"
                          "  --h=N: Switching height for cip-apr (default: 3)\n";
             return 0;
         }
@@ -405,9 +408,14 @@ int main(int argc, char **argv)
     if (run_test)
         return run_test_harness(seed, iters, do_check, sortopt, em_path);
 
-    if (mode == "cip")
+    if (mode == "plain-cip")
+    // cip-apr with switching height h = 0, however with more memory allocated
         return run_mode_cip(seed, iters, do_check, verbose, sortopt);
+    if (mode == "cip")
+    // cip-apr with switching height h = 0
+        return run_mode_cip_apr(seed, iters, do_check, verbose, sortopt, 0);
     if (mode == "cip-pr")
+    // cip-apr with switching height h = k-1 = 4
         return run_mode_pr(seed, iters, do_check, verbose, sortopt);
     if (mode == "cip-em")
         return run_mode_em(seed, iters, do_check, verbose, sortopt, em_path);

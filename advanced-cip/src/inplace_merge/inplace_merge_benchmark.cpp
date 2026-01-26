@@ -1,3 +1,9 @@
+/*
+A benchmark for inplace merge, to verify that the peak memory = max(L0, L1) for performing L1 = merge(L0)
+- A max list size for each layer is defined (MAX_LIST_SIZE) in practical implementation (not set here).
+- BENCHMARK_TMP_SIZE corresponds to the temporary buffer size (|T|) allocated for merging.
+*/
+
 #include "eq200_9/equihash_200_9.h"
 #include "eq200_9/merge_200_9.h"
 #include "eq200_9/sort_200_9.h"

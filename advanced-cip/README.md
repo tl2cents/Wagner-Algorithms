@@ -6,6 +6,8 @@
 * **OS**: Linux (Ubuntu 20.04 LTS or later recommended), NOT tested on MacOS or Windows natively.
 * **Compiler**: GCC 9.0+ with C++20 support
 
+<!-- nohup ./run_bench.sh --variant 200_9 --seed 0 --iters 1000 > logs/bench_eq2009_$(date +%Y%m%d_%H%M%S).log 2> &1 & -->
+
 > Running Benchmark Comparisons of Equihash(144, 5):
 ``` bash
 $./run.sh --iters 100 --seed 0 --variant 144_5

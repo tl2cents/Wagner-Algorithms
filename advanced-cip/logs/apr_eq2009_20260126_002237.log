@@ -1,0 +1,38 @@
+nohup: ignoring input
+[0;34m[1m┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓[0m
+[0;34m[1m┃  Equihash(200,9) CIP-APR Switching Height Curve     ┃[0m
+[0;34m[1m┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛[0m
+Params: [36m200_9[0m  Seed: [36m0[0m  Iters: [36m1000[0m  Heights: [36m0 1 2 3 4 5 6 7 8[0m
+
+[0;32mRunning CIP-APR with different switching heights...[0m
+[1;33m────────────────────────────────────────────────────────[0m
+[36m[h=0][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=0.91s sol/s=2.05 USS=124.3MB
+[36m[h=1][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=1.13s sol/s=1.66 USS=112.3MB
+[36m[h=2][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=1.41s sol/s=1.33 USS=100.2MB
+[36m[h=3][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=1.74s sol/s=1.08 USS=88.1MB
+[36m[h=4][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=2.14s sol/s=0.88 USS=75.8MB
+[36m[h=5][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=2.61s sol/s=0.72 USS=63.4MB
+[36m[h=6][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=3.17s sol/s=0.59 USS=61.2MB
+[36m[h=7][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=3.77s sol/s=0.50 USS=61.3MB
+[36m[h=8][0m Running 1000 iteration(s)... Done. [0;32msols=1875[0m time=4.41s sol/s=0.43 USS=58.5MB
+
+[0;32m[1mResults Summary[0m
+[1;33m────────────────────────────────────────────────────────[0m
+[1mHeight        Time(s)  Solutions      Sol/s     PeakUSS(kB)  PeakUSS(MB)[0m
+-------- ------------ ---------- ---------- --------------- ------------
+h=0              0.91       1875       2.05          127284        124.3
+h=1              1.13       1875       1.66          114964        112.3
+h=2              1.41       1875       1.33          102608        100.2
+h=3              1.74       1875       1.08           90196         88.1
+h=4              2.14       1875       0.88           77656         75.8
+h=5              2.61       1875       0.72           64876         63.4
+h=6              3.17       1875       0.59           62708         61.2
+h=7              3.77       1875       0.50           62724         61.3
+h=8              4.41       1875       0.43           59936         58.5
+
+[0;34mNotes:[0m
+  - Higher switching_height = lower memory, longer time (more recomputation)
+  - h=0: No partial recomputation (baseline memory)
+  - h=8: Maximum recomputation (minimum memory) for Equihash(200,9)
+  - Valid h range: 0 .. 8
+[0;32mBenchmark complete.[0m
