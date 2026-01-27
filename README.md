@@ -4,8 +4,8 @@ Code accompanying the paper: "Memory Optimizations of Wagner’s Algorithm with 
 
 - [python-poc/](./python-poc/): Python scripts for memory estimation and algorithmic proofs-of-concept. This corresponds to the theoretical results and tables in the paper.
 - [advanced-cip/](./advanced-cip/): C++ implementations of the Equihash algorithm using the proposed Advanced Post-Retrieval (APR) techniques. This is used for the performance benchmarks reported in the paper.
-- [pics](./pics/): Helper scripts to generate the plots used in the paper.
-- [third_party](./third_party/): External dependencies and baseline implementations (Tromp's Equihash, BLAKE2b, kxsort).
+- [pics/](./pics/): Helper scripts to generate the plots used in the paper.
+- [third_party/](./third_party/): External dependencies and baseline implementations (Tromp's Equihash, BLAKE2b, kxsort).
 
 ## New Memory Optimizations of Wagner's Algorithms
 
