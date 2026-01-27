@@ -2,14 +2,14 @@
 
 Code accompanying the paper: "Memory Optimizations of Wagner’s Algorithm with Applications to Equihash". The paper is available at https://eprint.iacr.org/2025/2141. The artifact is organized as follows:
 
-- **`python-poc/`**: Python scripts for memory estimation and algorithmic proofs-of-concept. This corresponds to the theoretical results and tables in the paper.
-- **`advanced-cip/`**: Optimized C++ implementations of the Equihash algorithm using the proposed Advanced Post-Retrieval (APR) techniques. This is used for the performance benchmarks reported in the paper.
-- **`pics/`**: Helper scripts to generate the plots used in the paper.
-- **`third_party/`**: External dependencies and baseline implementations (Tromp's Equihash, BLAKE2b, kxsort).
+- [python-poc/](./python-poc/): Python scripts for memory estimation and algorithmic proofs-of-concept. This corresponds to the theoretical results and tables in the paper.
+- [advanced-cip/](./advanced-cip/): C++ implementations of the Equihash algorithm using the proposed Advanced Post-Retrieval (APR) techniques. This is used for the performance benchmarks reported in the paper.
+- [pics](./pics/): Helper scripts to generate the plots used in the paper.
+- [third_party](./third_party/): External dependencies and baseline implementations (Tromp's Equihash, BLAKE2b, kxsort).
 
 ## New Memory Optimizations of Wagner's Algorithms
 
-We propose two new techniques to optimize Wagner's algorithms:
+We propose three new techniques to optimize Wagner's algorithms:
 
 - **Improved Index-Trimming Technique**: Reduces memory usage by trimming indexes for both the single-chain and $k$-tree algorithms implemented with index vectors.
 - **Post-Retrival Technique**: Reduces memory usage by reconstructing the index pointers for single-chain algorithm implemented with index pointers. It's not memory-efficient for the $k$-tree algorithm.
@@ -23,7 +23,7 @@ Theoretically, our techniques can reduce the peak memory usage of Wagner's algor
 - For algorithm-bound LSR trade-offs applicable to \textsf{Equihash}, the resulting curves are not of the same order of magnitude as those shown above and are therefore omitted. For example, for Equihash(144,5), halving the memory leads to a time-penalty factor as large as $2^{10}$.
 - For the LSR curve above, the reason why the time penalty is slightly above 1 when q=1 is that their baseline algorithm differs from the standard Wagner algorithm.
 
-Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits, i.e., q < 0.5) at the cost of additional computational overhead. **More estimators and theoretic resluts are available in [python-poc](./python-poc/).**
+Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits, i.e., q > 2) at the cost of additional computational overhead. **More estimators and theoretic resluts are available in [python-poc](./python-poc/).**
 
 ## Implementations of Post-Retrieval Technique
 
@@ -41,9 +41,7 @@ For the parameter setting $`\textsf{Equihash}(144, 5)`$, a subset of our optimiz
 | CIP-APR        |  0.10 |           19.77 |             198 |        713.68 |
 | Tromp-Baseline |  0.20 |            9.11 |             190 |       2569.69 |
 
-> Notes: "Avg single run (s)" is the average per-iteration runtime reported by the benchmark (for Tromp the total time was divided by 100 iterations to obtain the per-run average).
-> Details are available in the directories [advanced-cip](./advanced-cip/).
-
+> Details are available in [advanced-cip](./advanced-cip/).
 
 ## Quick Start
 
