@@ -11,16 +11,16 @@ Code accompanying the paper: "Memory Optimizations of Wagner’s Algorithm with 
 
 We propose three new techniques to optimize Wagner's algorithms:
 
-- **Improved Index-Trimming Technique**: Reduces memory usage by trimming indexes for both the single-chain and $k$-tree algorithms implemented with index vectors.
-- **Post-Retrival Technique**: Reduces memory usage by reconstructing the index pointers for single-chain algorithm implemented with index pointers. It's not memory-efficient for the $k$-tree algorithm.
-- **In-place Merge**: All of these optimizations rely on our newly proposed in-place $`\textsf{merge}`$ framework. See [merge_in_place.py](advanced-cip/merge_in_place.py) and [inplace_merge_benchmark.cpp](advanced-cip/src/inplace_merge/inplace_merge_benchmark.cpp) for the core idea and algorithmic details.
+- **Improved Index-Trimming Technique**: Reduce memory usage by trimming indexes for both the single-chain and $k$-tree algorithms implemented with index vectors.
+- **Post-Retrival Technique**: Reduce memory usage by reconstructing the index pointers for single-chain algorithm implemented with index pointers. It's not memory-efficient for the $k$-tree algorithm.
+- **In-place Merge**: Both techniques rely on our newly proposed in-place $`\textsf{merge}`$ framework. See [merge_in_place.py](advanced-cip/merge_in_place.py) and [inplace_merge_benchmark.cpp](advanced-cip/src/inplace_merge/inplace_merge_benchmark.cpp) for the core idea and algorithmic details.
 
 Theoretically, our techniques can reduce the peak memory usage of Wagner's algorithm by half (from $`2nN`$ to $`nN`$ bits) across most parameter settings, while incurring no more than a twofold time penalty. For example, the figure below shows that our new advanced post-retrieval technique achieves an almost linear time–memory trade-off curve, which is strictly better than the curve obtained by existing List Size Reduction (LSR) techniques.
 
 ![trade-off](./pics/trade-off.svg)
 
 - The above LSR curve is not applicable to algorithm-bound Equihash, whereas our algorithm is. 
-- For algorithm-bound LSR trade-offs applicable to \textsf{Equihash}, the resulting curves are not of the same order of magnitude as those shown above and are therefore omitted. For example, for Equihash(144,5), halving the memory leads to a time-penalty factor as large as $2^{10}$.
+- For algorithm-bound LSR trade-offs applicable to Equihash, the resulting LSR curves are not of the same order of magnitude as those shown above and are therefore omitted. For example, for Equihash(144,5), halving the memory leads to a time-penalty factor as large as $2^{10}$.
 - For the LSR curve above, the reason why the time penalty is slightly above 1 when q=1 is that their baseline algorithm differs from the standard Wagner algorithm.
 
 Under the hybrid framework, the memory footprint can be further reduced (below $`nN`$ bits, i.e., q > 2) at the cost of additional computational overhead. **More estimators and theoretic resluts are available in [python-poc](./python-poc/).**
@@ -56,6 +56,3 @@ cd Wagner-Algorithms
 
 2.  **Run Benchmarks (C++)**:
     Navigate to [advanced-cip](./advanced-cip) to build and run the C++ benchmarks (advanced post-retrieval technique).
-
-## TODO
-- [ ] Implement hybrid single-chain algorithms. See our on-going development branch [dev-hybrid](https://github.com/tl2cents/Wagner-Algorithms/tree/dev-hybrid).
