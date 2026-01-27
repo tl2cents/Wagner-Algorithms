@@ -372,6 +372,15 @@ int main(int argc, char **argv)
     std::string em_path = "ip_cache_200_9.bin";
     int apr_h = 5; // Optimal switching height
     int h = apr_h; // Default switching height
+    if (argc <= 1)
+    {
+        std::cout << "Usage: " << argv[0]
+                  << " [--mode=cip|cip-pr|cip-em|cip-apr] [--seed=N] [--iters=M]"
+                     " [--sort=kx|std] [--em=path] [--h=0-3] [--verbose] [--test]\n"
+                     "  --em=path: External memory file path (default: ip_cache_200_9.bin)\n"
+                     "  --h=N: Switching height for cip-apr (default: 5)\n";
+        return 0;
+    }
 
     for (int i = 1; i < argc; ++i)
     {
@@ -396,9 +405,9 @@ int main(int argc, char **argv)
         {
             std::cout << "Usage: " << argv[0]
                       << " [--mode=cip|cip-pr|cip-em|cip-apr] [--seed=N] [--iters=M]"
-                         " [--sort=std|kx] [--em=path] [--h=0-3] [--verbose] [--test]\n"
+                         " [--sort=kx|std] [--em=path] [--h=0-3] [--verbose] [--test]\n"
                          "  --em=path: External memory file path (default: ip_cache_200_9.bin)\n"
-                         "  --h=N: Switching height for cip-apr (default: 3)\n";
+                         "  --h=N: Switching height for cip-apr (default: 5)\n";
             return 0;
         }
     }

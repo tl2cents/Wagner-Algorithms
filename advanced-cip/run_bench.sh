@@ -62,7 +62,6 @@ case "$NK" in
     fi
     MAIN_BIN="apr_144_5"
     EM_FILE="./ip_cache_144_5.bin"
-    HAS_CIP_APR=false
     TROMP_TARGET="eq14451"
     TROMP_BIN="eq14451"
     ;;

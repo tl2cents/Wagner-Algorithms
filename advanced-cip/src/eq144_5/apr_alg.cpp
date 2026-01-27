@@ -380,7 +380,7 @@ uint64_t advanced_cip_pr_peak_memory(int h)
  *
  * @tparam switching_height The layer at which to start tracking indices (0 to K-1)
  *   - 0-3: hybrid (memory/time tradeoff)
- *   - 4: plain_cip_pr (recovers all, min memory ~750MB, max time)
+ *   - 4: plain_cip_pr (recovers all, min memory ~700MB, max time)
  */
 template <int switching_height>
 std::vector<Solution> advanced_cip_pr(int seed, uint8_t *base = nullptr)
