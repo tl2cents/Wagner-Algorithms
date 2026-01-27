@@ -19,16 +19,16 @@ def get_GBP_params(PARAM):
         n = 200
         k = 9
         # see eq1445/README.md for results
-        runtime_exp = np.array([0.93, 1.15, 1.45, 1.79, 2.22, 2.70, 3.27, 3.89, 4.55])
-        memory_exp  = np.array([123.9, 110.6, 99.8, 86.5, 74.2, 61.8, 60.8, 59.6, 56.9])
-        tromp = 145.54  # MB
+        runtime_exp = np.array([0.91, 1.13, 1.41, 1.74, 2.14, 2.61, 3.17, 3.77, 4.41])
+        memory_exp  = np.array([124.3, 112.3, 100.2, 88.1, 75.8, 63.4, 61.2, 61.3, 58.5])
+        tromp = 144.86  # MB
     elif PARAM == "144_5":
         n = 144
         k = 5
         # see eq1445/README.md for results
-        runtime_exp = np.array([8.66, 11.52, 15.48, 20.35, 25.87])
-        memory_exp  = np.array([1453.5, 1197.2, 939.5, 713.2, 706.8])
-        tromp = 2569.71  # MB
+        runtime_exp = np.array([8.42, 11.05, 14.82, 19.37, 24.74])
+        memory_exp  = np.array([1453.1, 1196.8, 940.5, 713.7, 706.8])
+        tromp = 2569.69  # MB
     else:
         raise ValueError("Unknown PARAM")
 
@@ -81,7 +81,8 @@ for i, PARAM in enumerate(PARAMS):
     q_theory = 1.0 / mem_theory_frac
     time_theory_penalty = runtime_theory / runtime_theory[0]
 
-    curr_ax.plot(q_theory, time_theory_penalty, "s--", label="Our Theory~(Sec.~\\ref{para:cip-apr})~", color="#0076AA", linewidth=2.0)
+    theory_label = "Our Theory~(Sec.~\\ref{para:cip-apr})~" if args.output_format == 'latex' else "Our Theory"
+    curr_ax.plot(q_theory, time_theory_penalty, "s--", label=theory_label, color="#0076AA", linewidth=2.0)
 
     # ---------------- Our Impl Points ----------------
     # Normalize Impl (Baseline h=0)
@@ -120,10 +121,21 @@ for i, PARAM in enumerate(PARAMS):
                              color="#EE2A25", ha='center', va='bottom', **anno_opts)
 
     # Explanation for h
-    curr_ax.text(0.05, 0.95, "Numbers indicate\nswitching height $h$ \n of our Algorithm~\\ref{alg:CIP-PR}", 
-                 transform=curr_ax.transAxes, 
-                 fontsize=14, ha='left', va='top',
-                 bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#AAAAAA", alpha=0.8))
+    anno_text = (
+        "Numbers indicate\nswitching height $h$ \n of our Algorithm~\\ref{alg:CIP-PR}"
+        if args.output_format == 'latex'
+        else "Numbers indicate\nswitching height $h$ \n of our Algorithm CIP-PR"
+    )
+    curr_ax.text(
+        0.05,
+        0.95,
+        anno_text,
+        transform=curr_ax.transAxes,
+        fontsize=14,
+        ha='left',
+        va='top',
+        bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="#AAAAAA", alpha=0.8),
+    )
 
     # ---------------- Formatting ----------------
     curr_ax.set_title(rf"$\mathrm{{GBP}}({n},2^{{{k}}})$ Trade-off")
@@ -143,11 +155,13 @@ for i, PARAM in enumerate(PARAMS):
 
     # Plot LSR and LSR* curves across extended range so they reach x_points_max
     q_plot = np.linspace(q_min, x_points_max, 300)
+    lsr_label = r"LSR \cite{NDSS:BirKho16}~~" if args.output_format == 'latex' else "LSR"
     lsr_penalty = (3 * (q_plot**((k - 1)/2.0)) + k) / (k + 1)
-    curr_ax.plot(q_plot, lsr_penalty, label=r"LSR \cite{NDSS:BirKho16}~~", linestyle='-', color='#AE8064', linewidth=2.0)
+    curr_ax.plot(q_plot, lsr_penalty, label=lsr_label, linestyle='-', color='#AE8064', linewidth=2.0)
     if args.show_lsr_star:
+        lsr_star_label = r"LSR$^\star$" if args.output_format == 'latex' else "LSR*"
         lsr_star_penalty = (2**k) * (q_plot**(k/2.0)) * (k**(k/2.0 - 1))
-        curr_ax.plot(q_plot, lsr_star_penalty, label=r"LSR$^\star$", linestyle='--', color='#2E8B57', linewidth=2.0)
+        curr_ax.plot(q_plot, lsr_star_penalty, label=lsr_star_label, linestyle='--', color='#2E8B57', linewidth=2.0)
 
     if args.show_lsr_star:
         # Mode 2: Log scale to show LSR*

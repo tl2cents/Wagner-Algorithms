@@ -26,16 +26,16 @@ def get_equihash_params(PARAM):
         n = 200
         k = 9
         # see eq1445/README.md for results
-        runtime_exp = np.array([0.93, 1.15, 1.45, 1.79, 2.22, 2.70, 3.27, 3.89, 4.55])
-        memory_exp  = np.array([123.9, 110.6, 99.8, 86.5, 74.2, 61.8, 60.8, 59.6, 56.9])
-        tromp = 145.54  # MB
+        runtime_exp = np.array([0.91, 1.13, 1.41, 1.74, 2.14, 2.61, 3.17, 3.77, 4.41])
+        memory_exp  = np.array([124.3, 112.3, 100.2, 88.1, 75.8, 63.4, 61.2, 61.3, 58.5])
+        tromp = 144.86  # MB
     elif PARAM == "144_5":
         n = 144
         k = 5
         # see eq1445/README.md for results
-        runtime_exp = np.array([8.66, 11.52, 15.48, 20.35, 25.87])
-        memory_exp  = np.array([1453.5, 1197.2, 939.5, 713.2, 706.8])
-        tromp = 2569.71  # MB
+        runtime_exp = np.array([8.42, 11.05, 14.82, 19.37, 24.74])
+        memory_exp  = np.array([1453.1, 1196.8, 940.5, 713.7, 706.8])
+        tromp = 2569.69  # MB
     else:
         raise ValueError("Unknown PARAM")
 
@@ -184,8 +184,11 @@ lines = [
 ]
 
 # labels = ["Our Impl.", "Our Theory", r"State-of-the-Art (Impl.) \cite{equihastromp}", "State-of-the-Art (Theory)"]
-labels = ["Our Impl.", "Our Theory", "State-of-the-Art (Impl.)", "State-of-the-Art (Theory)"]
 
+if args.output_format == 'latex':
+    labels = ["Our Impl.", "Our Theory", r"State-of-the-Art (Impl.) \cite{equihastromp}", "State-of-the-Art (Theory)"]
+else:
+    labels = ["Our Impl.", "Our Theory", "State-of-the-Art (Impl.)", "State-of-the-Art (Theory)"]
 
 fig.legend(
     handles=lines,
