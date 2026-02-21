@@ -27,7 +27,7 @@ The results are logged in [logs/](./logs/) directory.
 
 ### Run In-Place Merge Benchmark
 
-To reproduce the results in *Table~4* from the paper, run:
+To reproduce the results in *Table~3* from the paper, run:
 
 ``` bash
 ./run_merge.sh 0 2000 std
