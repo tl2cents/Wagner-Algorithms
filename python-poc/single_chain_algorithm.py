@@ -750,8 +750,8 @@ class single_chain_wagner_algorithm:
             k. retrieve the real index vector solution: (i1, i2, ..., ik) from L_1 in external memory
         """
         if external_path is None:
-            os.makedirs(os.path.dirname("./tmp"), exist_ok=True)
             external_path = f"./tmp/ip_{self.n}_{self.k}.bin"
+            os.makedirs(os.path.dirname(external_path), exist_ok=True)
         ell = self.ell
         # first run: recover (p1, p2) and store index_pointer lists in external memory
         merged_list = self.generate_hash_list()
