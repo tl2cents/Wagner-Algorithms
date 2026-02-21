@@ -1,6 +1,6 @@
 #!/bin/bash
 # Lightweight benchmark for Equihash CIP-APR switching height curve
-# Usage: ./run_apr_curve.sh [--nk 144_5|200_9] [--seed S] [--iters N] [--heights "0 1 2 3 4 ..."]
+# Usage: ./run_apr.sh [--nk 144_5|200_9] [--seed S] [--iters N] [--heights "0 1 2 3 4 ..."]
 #        --nk      Which Equihash params to use: 144_5 or 200_9 (default 144_5)
 #        --seed    Starting seed (default 0)
 #        --iters   Number of iterations per height (default 1)
