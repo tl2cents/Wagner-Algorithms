@@ -5,6 +5,21 @@ This directory contains Python scripts mainly used for estimating the theoretica
 - **`single_chain_algorithm.py, k_tree_algorithm.py`**: PoC for TIV, CIP algorithms.
 - **`wagner_algorithmic_estimator.py`**: Helper classes and functions for estimating the complexity of Wagner's algorithm.
 
+## Python Version and Dependencies
+
+- **Python**: 3.10 or newer.
+- Install dependencies from this directory:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+The pinned dependencies include:
+
+- `rich`, `prettytable`: required by the PoC and estimator scripts in `python-poc/`.
+- `psutil`: required by `merge_in_place.py`.
+- `numpy`, `matplotlib`: required by plotting scripts in `../pics/`.
+
 ## Index Trimming PoC
 
 To reproduce the results in Table~4 from the paper, run:
