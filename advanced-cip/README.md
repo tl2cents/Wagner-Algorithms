@@ -91,7 +91,7 @@ $./run_bench.sh --nk 200_9 --seed 0 --iters 1000
 
 > Run Advanced Post-Retrieval of Equihash(200, 9):
 ``` bash
-./run_apr_curve.sh --nk 200_9 --seed 0 --iters 1000
+./run_apr.sh --nk 200_9 --seed 0 --iters 1000
 ```
 
 | Height | Avg RunTime (s) | Solutions | Sol/s | Peak USS (MB) |
@@ -109,7 +109,7 @@ $./run_bench.sh --nk 200_9 --seed 0 --iters 1000
 
 > Run Advanced Post-Retrieval of Equihash(144, 5):
 ``` bash
-./run_apr_curve.sh --nk 144_5 --seed 0 --iters 100
+./run_apr.sh --nk 144_5 --seed 0 --iters 100
 ```
 
 | Height | Avg RunTime (s) | Solutions | Sol/s | Peak USS (MB) |
